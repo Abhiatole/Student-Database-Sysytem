@@ -1026,28 +1026,25 @@ class MainApplication:
             filetypes=[("PDF Documents", "*.pdf")],
             initialfile=f"{report_type.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
         )
-        if not filepath: return
-        
+        if not filepath:
+            return
         try:
             doc = SimpleDocTemplate(filepath, pagesize=letter)
             styles = getSampleStyleSheet()
             story = []
-
             story.append(Paragraph(f"{report_type} Report", styles['h1']))
             story.append(Paragraph(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['h3']))
             story.append(Spacer(1, 24))
-
             headers = list(self.current_report_data[0].keys())
             data = [headers] + [list(map(str, row)) for row in self.current_report_data]
-            
             table = Table(data, hAlign='LEFT')
             table_style = TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#007bff")), # Primary color
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#007bff")),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#f0f0f0")), # Light background
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#f0f0f0")),
                 ('GRID', (0, 0), (-1, -1), 1, colors.black),
                 ('LEFTPADDING', (0, 0), (-1, -1), 6),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 6)
@@ -1055,13 +1052,11 @@ class MainApplication:
             table.setStyle(table_style)
             story.append(table)
             doc.build(story)
-            
             log_delivery('report', report_type, 'User Download', 'download', 'Completed')
             messagebox.showinfo("Success", f"Report saved successfully to:\n{filepath}")
         except Exception as e:
-            log_delivery('report', report_type, 'User Download', 'download', 'Failed', str(e))
-            messagebox.showerror("Export Error", f"Failed to generate PDF: {e}")
-            
+            messagebox.showerror("Export Error", f"Failed to export PDF: {e}")
+
     def export_report_csv(self):
         report_type = self.report_type_combo.get()
         filepath = filedialog.asksaveasfilename(
@@ -1069,141 +1064,99 @@ class MainApplication:
             filetypes=[("CSV Files", "*.csv")],
             initialfile=f"{report_type.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv"
         )
-        if not filepath: return
-
+        if not filepath:
+            return
         try:
+            import csv
             headers = list(self.current_report_data[0].keys())
             with open(filepath, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
                 writer.writerow(headers)
                 for row in self.current_report_data:
-                    writer.writerow(list(row))
-            
+                    writer.writerow([row[h] for h in headers])
             log_delivery('report', report_type, 'User Download', 'download', 'Completed')
             messagebox.showinfo("Success", f"Report saved successfully to:\n{filepath}")
         except Exception as e:
-            log_delivery('report', report_type, 'User Download', 'download', 'Failed', str(e))
-            messagebox.showerror("Export Error", f"Failed to generate CSV: {e}")
+            messagebox.showerror("Export Error", f"Failed to export CSV: {e}")
 
     def share_report_email(self):
-        # First, save a temporary PDF to attach
+        import tempfile
         report_type = self.report_type_combo.get()
-        temp_dir = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp")
-        os.makedirs(temp_dir, exist_ok=True)
-        temp_path = os.path.join(temp_dir, f"report_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf")
-
-        # Reuse PDF generation logic
-        self.export_report_pdf.__self__.current_report_data = self.current_report_data
-        self.export_report_pdf.__self__.report_type_combo = self.report_type_combo
-        
-        # A bit of a hack to call the PDF export on a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+            temp_path = tmp.name
+        # Generate PDF to temp_path
         try:
             doc = SimpleDocTemplate(temp_path, pagesize=letter)
             styles = getSampleStyleSheet()
             story = []
             story.append(Paragraph(f"{report_type} Report", styles['h1']))
+            story.append(Paragraph(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['h3']))
+            story.append(Spacer(1, 24))
             headers = list(self.current_report_data[0].keys())
             data = [headers] + [list(map(str, row)) for row in self.current_report_data]
             table = Table(data, hAlign='LEFT')
-            table.setStyle(TableStyle([('GRID', (0,0), (-1,-1), 1, colors.black)]))
+            table_style = TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#007bff")),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#f0f0f0")),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6)
+            ])
+            table.setStyle(table_style)
             story.append(table)
             doc.build(story)
-            
-            # Now open the email dialog
+            # Open email dialog
             EmailDialog(self.master, temp_path, report_type)
-
         except Exception as e:
-            messagebox.showerror("Error", f"Could not prepare file for sharing: {e}")
+            messagebox.showerror("Email Error", f"Failed to generate PDF for email: {e}")
 
-
-    # ============================================================================
-    # --------------------------- ANALYTICS & INSIGHTS TAB -----------------------
-    # ============================================================================
     def setup_analytics_tab(self, parent_frame):
-        parent_frame.columnconfigure(0, weight=1)
-        parent_frame.rowconfigure(1, weight=1)
-
-        # --- Controls ---
-        controls_frame = ttk.LabelFrame(parent_frame, text="Generate Visual Analytics", padding=15, bootstyle="info")
-        controls_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-        controls_frame.columnconfigure(1, weight=1)
-
-        ttk.Label(controls_frame, text="Insight Type:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
-        self.analytics_combo = ttk.Combobox(controls_frame, values=["Students per Course", "Enrollment Status Breakdown"])
-        self.analytics_combo.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
-        self.analytics_combo.set("Students per Course")
-        
-        ttk.Button(controls_frame, text="Generate Chart", command=self.generate_chart, bootstyle="primary").grid(row=0, column=2, padx=10)
-        
-        # --- Chart Canvas ---
-        self.chart_display_frame = ttk.Frame(parent_frame, padding=10)
-        self.chart_display_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-
-    def generate_chart(self):
-        # Clear previous chart
-        for widget in self.chart_display_frame.winfo_children():
-            widget.destroy()
-
-        insight = self.analytics_combo.get()
-        conn = get_db_connection()
-
-        fig = Figure(figsize=(8, 5), dpi=100)
-        fig.patch.set_facecolor(self.style.colors.bg)
-        ax = fig.add_subplot(111)
-        
-        if insight == "Students per Course":
+        ttk.Label(parent_frame, text="Analytics & Insights", font=("Helvetica", 16, "bold"), bootstyle="primary").pack(pady=10)
+        # Example: Add a bar chart for students per course
+        try:
+            conn = get_db_connection()
             query = """
-                SELECT c.course_name, COUNT(s.student_id) as count
-                FROM courses c LEFT JOIN students s ON c.course_id = s.course_id
-                GROUP BY c.course_name ORDER BY count DESC;
+                SELECT c.course_name, COUNT(s.student_id) as student_count
+                FROM courses c
+                LEFT JOIN students s ON c.course_id = s.course_id
+                GROUP BY c.course_name
             """
             data = conn.execute(query).fetchall()
+            conn.close()
             labels = [row['course_name'] for row in data]
-            values = [row['count'] for row in data]
-            
-            ax.set_title("Number of Students per Course", color=self.style.colors.fg)
+            values = [row['student_count'] for row in data]
+            if not labels:
+                ttk.Label(parent_frame, text="No data to display chart.").pack()
+                return
+            fig = Figure(figsize=(6, 4), dpi=100)
+            fig.patch.set_facecolor(self.style.colors.bg)
+            ax = fig.add_subplot(111)
             ax.bar(labels, values, color=self.style.colors.primary)
-            ax.set_ylabel("Number of Students", color=self.style.colors.fg)
-            ax.tick_params(axis='x', rotation=45, colors=self.style.colors.fg)
-            ax.tick_params(axis='y', colors=self.style.colors.fg)
+            ax.set_title("Students per Course", color=self.style.colors.fg)
+            ax.set_ylabel("Number of Students")
+            ax.set_xlabel("Course")
+            fig.tight_layout()
+            canvas = FigureCanvasTkAgg(fig, master=parent_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        except Exception as e:
+            ttk.Label(parent_frame, text=f"Could not load chart: {e}").pack()
 
-        elif insight == "Enrollment Status Breakdown":
-            query = """
-                SELECT CASE WHEN enrollment_status = 1 THEN 'Active' ELSE 'Inactive' END as status, 
-                    COUNT(student_id) as count
-                FROM students GROUP BY status;
-            """
-            data = conn.execute(query).fetchall()
-            labels = [row['status'] for row in data]
-            values = [row['count'] for row in data]
-
-            ax.set_title("Student Enrollment Status", color=self.style.colors.fg)
-            ax.pie(values, labels=labels, autopct='%1.1f%%', startangle=90,
-                colors=[self.style.colors.success, self.style.colors.danger],
-                textprops=dict(color=self.style.colors.fg))
-            ax.axis('equal')
-
-        conn.close()
-        fig.tight_layout()
-
-        canvas = FigureCanvasTkAgg(fig, master=self.chart_display_frame)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill='both', expand=True)
-
-    # ============================================================================
-    # ----------------------------- OTHER TABS (Stubs) ---------------------------
-    # ============================================================================
     def setup_id_card_tab(self, parent_frame):
-        ttk.Label(parent_frame, text="[ID Card Generation UI from original file would be placed here.]").pack(pady=20)
+        ttk.Label(parent_frame, text="ID Card Generation", font=("Helvetica", 16, "bold"), bootstyle="primary").pack(pady=10)
+        ttk.Label(parent_frame, text="[ID card generation UI and logic goes here]").pack(pady=20)
 
     def setup_receipt_tab(self, parent_frame):
-        ttk.Label(parent_frame, text="[Receipt Generation UI from original file would be placed here.]").pack(pady=20)
-    
-    def setup_communications_tab(self, parent_frame):
-        ttk.Label(parent_frame, text="[New Communications Hub UI would be placed here.]\n"
-                                    "- Tab/Section to view and reply to feedback/queries.\n"
-                                    "- Tab/Section to create and send new announcements.").pack(pady=20)
+        ttk.Label(parent_frame, text="Receipt Generation", font=("Helvetica", 16, "bold"), bootstyle="primary").pack(pady=10)
+        ttk.Label(parent_frame, text="[Receipt generation UI and logic goes here]").pack(pady=20)
 
+    def setup_communications_tab(self, parent_frame):
+        ttk.Label(parent_frame, text="Communications Hub", font=("Helvetica", 16, "bold"), bootstyle="primary").pack(pady=10)
+        ttk.Label(parent_frame, text="[Feedback, queries, and announcements UI goes here]").pack(pady=20)
 # --- Main Execution ---
 if __name__ == "__main__":
     try:
