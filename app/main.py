@@ -11,6 +11,7 @@ from app.gui.communications import CommunicationsTab
 from app.gui.marks import MarksTab
 from app.db.database import init_db
 from app.utils.image_utils import load_image
+from app.gui.login import LoginWindow
 import os
 
 def add_window_controls(root):
