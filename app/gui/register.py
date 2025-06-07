@@ -1,6 +1,8 @@
 from ttkbootstrap import ttk
 import tkinter as tk
 from tkinter import messagebox
+from app.utils.security import hash_password
+from app.db.database import get_db_connection
 
 # Registration window logic for new users
 class RegisterWindow:
@@ -37,6 +39,17 @@ class RegisterWindow:
         if not (username and password and name and role):
             messagebox.showwarning("Input Error", "Please fill all fields.")
             return
-        # Registration logic goes here
-        messagebox.showinfo("Success", "User registered successfully!")
-        self.window.destroy()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO users (user_id, password_hash, name, role) VALUES (?, ?, ?, ?)",
+                (username, hash_password(password), name, role)
+            )
+            conn.commit()
+            messagebox.showinfo("Success", "User registered successfully!")
+            self.window.destroy()
+        except Exception as e:
+            messagebox.showerror("Registration Error", f"Failed to register user: {e}")
+        finally:
+            conn.close()
