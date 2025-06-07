@@ -14,8 +14,8 @@ class DashboardTab:
         self.setup_home_tab(parent)
 
     def setup_home_tab(self, parent_frame):
+        parent_frame.rowconfigure(0, weight=1)
         parent_frame.columnconfigure(0, weight=1)
-        parent_frame.rowconfigure(1, weight=1)
         header_frame = ttk.Frame(parent_frame)
         header_frame.grid(row=0, column=0, sticky="ew", pady=10)
         if self.logo_img:

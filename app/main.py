@@ -37,8 +37,10 @@ class MainApplication:
         self.theme_var = tk.StringVar(value="superhero")
         # Load images from resources directory
         resources_dir = os.path.join(os.path.dirname(__file__), "resources")
-        self.logo_img = load_image(os.path.join(resources_dir, "logo.png"), size=(64, 64))
-        self.banner_img = load_image(os.path.join(resources_dir, "college_banner.png"), size=(800, 200))
+        logo_path = os.path.join(resources_dir, "logo.png")
+        banner_path = os.path.join(resources_dir, "college_banner.png")
+        self.logo_img = load_image(logo_path, size=(64, 64))
+        self.banner_img = load_image(banner_path, size=(800, 200))
         self.create_main_widgets()
 
     def create_main_widgets(self):
