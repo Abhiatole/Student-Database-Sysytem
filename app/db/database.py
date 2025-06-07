@@ -104,7 +104,9 @@ CREATE TABLE IF NOT EXISTS delivery_logs (
 '''
 
 def get_db_connection():
-    return sqlite3.connect(DATABASE_NAME)
+    conn = sqlite3.connect(DATABASE_NAME)
+    conn.row_factory = sqlite3.Row  # Add this line
+    return conn
 
 def init_db():
     with get_db_connection() as conn:

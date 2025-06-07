@@ -3,6 +3,8 @@ from tkinter import ttk, messagebox, filedialog
 from app.db.models import Student
 from PIL import Image, ImageTk
 import os
+import random
+from datetime import datetime, timedelta
 
 class StudentManagementFrame(ttk.Frame):
     def __init__(self, parent):
@@ -234,9 +236,14 @@ class StudentManagementTab:
         ttk.Button(btn_frame, text="Delete", command=self.delete_student, bootstyle="danger").pack(side='left', padx=2)
         ttk.Button(btn_frame, text="Clear", command=self.clear_form, bootstyle="secondary").pack(side='left', padx=2)
 
+        # Add "Generate Sample Data" button
+        sample_btn = ttk.Button(btn_frame, text="Generate 100 Sample Students", command=self.generate_sample_students, bootstyle="warning")
+        sample_btn.pack(side='left', padx=2)
+        ToolTip(sample_btn, text="Add 100 random student entries for demo/testing")
+
         # Search
         search_frame = ttk.Frame(parent_frame)
-        search_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
+        search_frame.pack(fill="x", padx=10, pady=5)
         ttk.Label(search_frame, text="Search:").pack(side="left")
         self.search_var = tk.StringVar()
         search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
@@ -367,3 +374,58 @@ class StudentManagementTab:
             if any(query in str(value).lower() for value in student.values()):
                 values = [student.get(f) for f in self.tree['columns']]
                 self.tree.insert('', 'end', values=values)
+
+    def generate_sample_students(self):
+        first_names = ["Amit", "Priya", "Rahul", "Sneha", "Vikas", "Anjali", "Rohan", "Pooja", "Suresh", "Neha"]
+        last_names = ["Sharma", "Patel", "Singh", "Gupta", "Mehta", "Jain", "Kumar", "Verma", "Reddy", "Chopra"]
+        blood_groups = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
+        genders = ["Male", "Female", "Other"]
+        courses = [1, 2, 3, 4, 5]
+        years = [1, 2, 3, 4, 5]
+
+        for i in range(100):
+            fname = random.choice(first_names)
+            lname = random.choice(last_names)
+            name = f"{fname} {lname}"
+            roll_number = f"R{random.randint(10000,99999)}"
+            contact_number = f"9{random.randint(100000000,999999999)}"
+            email = f"{fname.lower()}.{lname.lower()}{random.randint(1,99)}@example.com"
+            address = f"{random.randint(1,200)}, Main Street, City"
+            aadhaar_no = f"{random.randint(100000000000,999999999999)}"
+            dob = (datetime.now() - timedelta(days=random.randint(6000, 9000))).strftime("%Y-%m-%d")
+            gender = random.choice(genders)
+            tenth_percent = round(random.uniform(60, 99), 2)
+            twelfth_percent = round(random.uniform(60, 99), 2)
+            blood_group = random.choice(blood_groups)
+            mother_name = f"{random.choice(first_names)} {lname}"
+            enrollment_date = (datetime.now() - timedelta(days=random.randint(0, 1000))).strftime("%Y-%m-%d")
+            course_id = random.choice(courses)
+            academic_year_id = random.choice(years)
+            profile_picture_path = None
+
+            data = {
+                "roll_number": roll_number,
+                "name": name,
+                "contact_number": contact_number,
+                "email": email,
+                "address": address,
+                "aadhaar_no": aadhaar_no,
+                "date_of_birth": dob,
+                "gender": gender,
+                "tenth_percent": tenth_percent,
+                "twelfth_percent": twelfth_percent,
+                "blood_group": blood_group,
+                "mother_name": mother_name,
+                "enrollment_date": enrollment_date,
+                "course_id": course_id,
+                "academic_year_id": academic_year_id,
+                "profile_picture_path": profile_picture_path,
+                "enrollment_status": 1
+            }
+            try:
+                Student.create(data)
+            except Exception as e:
+                print(f"Error adding sample student: {e}")
+
+        self.refresh_student_list()
+        messagebox.showinfo("Success", "100 random student entries added.")
