@@ -1,5 +1,6 @@
 import tkinter as tk
 from ttkbootstrap import Style, ttk
+from ttkbootstrap.tooltip import ToolTip
 from app.gui.dashboard import DashboardTab
 from app.gui.students import StudentManagementTab
 from app.gui.reports import ReportsTab
@@ -10,8 +11,7 @@ from app.gui.communications import CommunicationsTab
 from app.gui.marks import MarksTab
 from app.db.database import init_db
 from app.utils.image_utils import load_image
-from app.gui.login import LoginWindow
-from app.gui.register import RegisterWindow
+import os
 
 def add_window_controls(root):
     control_frame = ttk.Frame(root)
@@ -29,17 +29,34 @@ class MainApplication:
         self.master.deiconify()
         self.master.title("Student Database Management System")
         self.master.geometry("1366x768")
-        self.master.overrideredirect(True)
+        self.master.minsize(1024, 600)
+        self.master.overrideredirect(False)  # Allow window controls for all platforms
         self.style = Style(theme="superhero")
-        # Load images
-        self.logo_img = load_image("logo.png", size=(64, 64))
-        self.banner_img = load_image("college_banner.png", size=(800, 200))
+        # Theme toggle
+        self.theme_var = tk.StringVar(value="superhero")
+        # Load images from resources directory
+        resources_dir = os.path.join(os.path.dirname(__file__), "resources")
+        self.logo_img = load_image(os.path.join(resources_dir, "logo.png"), size=(64, 64))
+        self.banner_img = load_image(os.path.join(resources_dir, "college_banner.png"), size=(800, 200))
         self.create_main_widgets()
 
     def create_main_widgets(self):
         main_frame = tk.Frame(self.master)
         main_frame.pack(expand=True, fill="both")
-        self.notebook = tk.ttk.Notebook(main_frame)
+        # Theme switcher
+        theme_frame = ttk.Frame(main_frame)
+        theme_frame.pack(anchor="ne", padx=10, pady=5)
+        ttk.Label(theme_frame, text="Theme:").pack(side="left")
+        theme_combo = ttk.Combobox(theme_frame, values=self.style.theme_names(), textvariable=self.theme_var, width=15)
+        theme_combo.pack(side="left", padx=5)
+        theme_combo.bind("<<ComboboxSelected>>", self.change_theme)
+        ToolTip(theme_combo, text="Switch between light/dark themes")
+        # Status bar
+        self.status_var = tk.StringVar(value="Ready")
+        status_bar = ttk.Label(main_frame, textvariable=self.status_var, anchor="w", bootstyle="secondary")
+        status_bar.pack(side="bottom", fill="x")
+        # Notebook
+        self.notebook = ttk.Notebook(main_frame)
         self.notebook.pack(expand=True, fill="both", padx=10, pady=10)
         tabs = {
             "🏠 Home": lambda f: DashboardTab(f, self.style, self.logo_img),
@@ -52,9 +69,19 @@ class MainApplication:
             "Marks Entry": MarksTab,
         }
         for text, tab_class in tabs.items():
-            frame = tk.ttk.Frame(self.notebook, padding=10)
+            frame = ttk.Frame(self.notebook, padding=10)
             self.notebook.add(frame, text=text)
             tab_class(frame)
+        self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
+
+    def change_theme(self, event=None):
+        new_theme = self.theme_var.get()
+        self.style.theme_use(new_theme)
+        self.status_var.set(f"Theme changed to {new_theme}")
+
+    def on_tab_change(self, event):
+        tab = self.notebook.tab(self.notebook.select(), "text")
+        self.status_var.set(f"Switched to {tab} tab")
 
 def main():
     try:
