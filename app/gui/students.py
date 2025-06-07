@@ -7,6 +7,7 @@ import os
 import random
 from datetime import datetime, timedelta
 from app.db.database import get_db_connection
+from app.db.models import Student
 
 def ensure_deleted_column():
     from app.db.database import get_db_connection
@@ -744,63 +745,3 @@ class BinTab:
         count = Student.permanent_delete(student_ids)
         self.refresh_bin()
         messagebox.showinfo("Deleted", f"{count} students permanently deleted.")
-
-class Student:
-    # ...existing methods...
-
-    @staticmethod
-    def soft_delete(student_ids):
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.executemany('UPDATE students SET deleted=1 WHERE student_id=?', [(sid,) for sid in student_ids])
-            conn.commit()
-            return cursor.rowcount
-
-    @staticmethod
-    def restore(student_ids):
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.executemany('UPDATE students SET deleted=0 WHERE student_id=?', [(sid,) for sid in student_ids])
-            conn.commit()
-            return cursor.rowcount
-
-    @staticmethod
-    def permanent_delete(student_ids):
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.executemany('DELETE FROM students WHERE student_id=?', [(sid,) for sid in student_ids])
-            conn.commit()
-            return cursor.rowcount
-
-    @staticmethod
-    def get_all(include_deleted=False):
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            if include_deleted:
-                cursor.execute('SELECT * FROM students')
-            else:
-                cursor.execute('SELECT * FROM students WHERE deleted=0')
-            rows = cursor.fetchall()
-            return [dict(row) for row in rows]
-
-    @staticmethod
-    def get_bin():
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM students WHERE deleted=1')
-            rows = cursor.fetchall()
-            return [dict(row) for row in rows]
-
-    @staticmethod
-    def bulk_soft_delete(self):
-        selected_items = self.tree.selection()
-        if not selected_items:
-            messagebox.showwarning("Select Students", "Select students to move to bin.")
-            return
-        student_ids = [self.tree.item(item)['values'][0] for item in selected_items]  # [0] is student_id
-        if not messagebox.askyesno("Confirm", f"Move {len(student_ids)} students to bin?"):
-            return
-        from app.db.models import Student
-        count = Student.soft_delete(student_ids)
-        self.refresh_student_list()
-        messagebox.showinfo("Moved to Bin", f"{count} students moved to bin.")
