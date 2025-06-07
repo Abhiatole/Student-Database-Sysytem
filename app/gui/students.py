@@ -791,7 +791,7 @@ class Student:
             return [dict(row) for row in rows]
 
     @staticmethod
-    def bulk_soft_delete(student_ids):
+    def bulk_soft_delete(self):
         selected_items = self.tree.selection()
         if not selected_items:
             messagebox.showwarning("Select Students", "Select students to move to bin.")
