@@ -8,6 +8,16 @@ import random
 from datetime import datetime, timedelta
 from app.db.database import get_db_connection
 
+def ensure_deleted_column():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(students)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if 'deleted' not in columns:
+        cursor.execute("ALTER TABLE students ADD COLUMN deleted INTEGER DEFAULT 0")
+        conn.commit()
+    conn.close()
+
 class StudentManagementFrame(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
@@ -398,6 +408,10 @@ class StudentManagementTab:
         ttk.Button(btn_frame, text="Update", command=self.update_student, bootstyle="info").pack(side='left', padx=2)
         ttk.Button(btn_frame, text="Delete", command=self.delete_student, bootstyle="danger").pack(side='left', padx=2)
         ttk.Button(btn_frame, text="Clear", command=self.clear_form, bootstyle="secondary").pack(side='left', padx=2)
+        # Add "Move to Bin" button
+        ttk.Button(btn_frame, text="Move to Bin", command=self.bulk_soft_delete, bootstyle="danger").pack(side='left', padx=2)
+        # Add tooltip for "Move to Bin" button
+        ToolTip(btn_frame.winfo_children()[-1], text="Move selected students to bin (soft delete)")
 
         # Add "Generate Sample Data" button
         sample_btn = ttk.Button(btn_frame, text="Generate 100 Sample Students", command=self.generate_sample_students, bootstyle="warning")
@@ -678,3 +692,114 @@ class StudentManagementTab:
         conn.close()
         self.refresh_student_list()
         messagebox.showinfo("Success", "100 random student entries added.")
+
+class BinTab:
+    def __init__(self, parent):
+        self.parent = parent
+        self.setup_bin_tab(parent)
+
+    def setup_bin_tab(self, parent_frame):
+        ttk.Label(parent_frame, text="Deleted Students (Bin)", font=("Helvetica", 16, "bold"), bootstyle="danger").pack(pady=10)
+        columns = ['student_id', 'roll_number', 'name', 'email', 'deleted']
+        self.tree = ttk.Treeview(parent_frame, columns=columns, show='headings')
+        for col in columns:
+            self.tree.heading(col, text=col.replace('_', ' ').title())
+            self.tree.column(col, width=120)
+        self.tree.pack(fill='both', expand=True, padx=10, pady=10)
+        btn_frame = ttk.Frame(parent_frame)
+        btn_frame.pack(pady=10)
+        ttk.Button(btn_frame, text="Restore Selected", command=self.restore_selected, bootstyle="success").pack(side='left', padx=2)
+        ttk.Button(btn_frame, text="Delete Permanently", command=self.permanent_delete_selected, bootstyle="danger").pack(side='left', padx=2)
+        self.refresh_bin()
+
+    def refresh_bin(self):
+        from app.db.models import Student
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+        for student in Student.get_bin():
+            values = [student.get(f) for f in self.tree['columns']]
+            self.tree.insert('', 'end', values=values)
+
+    def restore_selected(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Select Students", "Select students to restore.")
+            return
+        student_ids = [self.tree.item(item)['values'][0] for item in selected_items]
+        from app.db.models import Student
+        count = Student.restore(student_ids)
+        self.refresh_bin()
+        messagebox.showinfo("Restored", f"{count} students restored.")
+
+    def permanent_delete_selected(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Select Students", "Select students to permanently delete.")
+            return
+        if not messagebox.askyesno("Confirm", "This will permanently delete selected students. Continue?"):
+            return
+        student_ids = [self.tree.item(item)['values'][0] for item in selected_items]
+        from app.db.models import Student
+        count = Student.permanent_delete(student_ids)
+        self.refresh_bin()
+        messagebox.showinfo("Deleted", f"{count} students permanently deleted.")
+
+class Student:
+    # ...existing methods...
+
+    @staticmethod
+    def soft_delete(student_ids):
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany('UPDATE students SET deleted=1 WHERE student_id=?', [(sid,) for sid in student_ids])
+            conn.commit()
+            return cursor.rowcount
+
+    @staticmethod
+    def restore(student_ids):
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany('UPDATE students SET deleted=0 WHERE student_id=?', [(sid,) for sid in student_ids])
+            conn.commit()
+            return cursor.rowcount
+
+    @staticmethod
+    def permanent_delete(student_ids):
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany('DELETE FROM students WHERE student_id=?', [(sid,) for sid in student_ids])
+            conn.commit()
+            return cursor.rowcount
+
+    @staticmethod
+    def get_all(include_deleted=False):
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            if include_deleted:
+                cursor.execute('SELECT * FROM students')
+            else:
+                cursor.execute('SELECT * FROM students WHERE deleted=0')
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    @staticmethod
+    def get_bin():
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM students WHERE deleted=1')
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    @staticmethod
+    def bulk_soft_delete(student_ids):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Select Students", "Select students to move to bin.")
+            return
+        student_ids = [self.tree.item(item)['values'][0] for item in selected_items]  # [0] is student_id
+        if not messagebox.askyesno("Confirm", f"Move {len(student_ids)} students to bin?"):
+            return
+        from app.db.models import Student
+        count = Student.soft_delete(student_ids)
+        self.refresh_student_list()
+        messagebox.showinfo("Moved to Bin", f"{count} students moved to bin.")

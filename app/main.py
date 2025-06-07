@@ -72,6 +72,7 @@ class MainApplication:
             "🧾 Receipt Generation": ReceiptTab,
             "💬 Communications": CommunicationsTab,
             "Marks Entry": MarksTab,
+            "🗑️ Bin": BinTab,
         }
         for text, tab_class in tabs.items():
             frame = ttk.Frame(self.notebook, padding=10)
