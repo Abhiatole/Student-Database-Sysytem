@@ -57,3 +57,15 @@ def seed_defaults():
             students
         )
         conn.commit()
+
+# Add to seed.py after seeding
+def print_seed_summary():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM faculties")
+        faculties = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM courses")
+        courses = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM users WHERE role='student'")
+        students = cursor.fetchone()[0]
+        print(f"Seeded {faculties} faculties, {courses} courses, {students} students.")

@@ -1,5 +1,5 @@
 import tkinter as tk
-from ttkbootstrap import Style
+from ttkbootstrap import Style, ttk
 from app.gui.dashboard import DashboardTab
 from app.gui.students import StudentManagementTab
 from app.gui.reports import ReportsTab
@@ -10,6 +10,18 @@ from app.gui.communications import CommunicationsTab
 from app.gui.marks import MarksTab
 from app.db.database import init_db
 from app.utils.image_utils import load_image
+from app.gui.login import LoginWindow
+from app.gui.register import RegisterWindow
+
+def add_window_controls(root):
+    control_frame = ttk.Frame(root)
+    control_frame.place(relx=1.0, rely=0.0, anchor="ne")
+    btn_min = ttk.Button(control_frame, text="_", width=2, command=root.iconify, bootstyle="secondary")
+    btn_min.pack(side="left", padx=1)
+    btn_max = ttk.Button(control_frame, text="□", width=2, command=lambda: root.state('zoomed'), bootstyle="secondary")
+    btn_max.pack(side="left", padx=1)
+    btn_close = ttk.Button(control_frame, text="✕", width=2, command=root.destroy, bootstyle="danger")
+    btn_close.pack(side="left", padx=1)
 
 class MainApplication:
     def __init__(self, master):
@@ -51,7 +63,9 @@ def main():
         tk.messagebox.showerror("Database Error", f"Failed to initialize database: {e}")
         exit(1)
     root = tk.Tk()
-    MainApplication(root)
+    # Show login window before main app
+    login_window = LoginWindow(root)
+    add_window_controls(root)  # Add window controls
     root.mainloop()
 
 if __name__ == "__main__":

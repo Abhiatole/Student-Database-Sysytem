@@ -52,23 +52,30 @@ class MarksTab:
 
     def add_marks(self):
         roll_number = self.marks_roll_entry.get().strip()
-        course = self.marks_course_combobox.get().strip()
+        course_name = self.marks_course_combobox.get().strip()
         semester = self.marks_semester_entry.get().strip()
         subject = self.marks_subject_entry.get().strip()
         marks_obtained = self.marks_obtained_entry.get().strip()
         max_marks = self.marks_max_entry.get().strip()
         grade = self.marks_grade_entry.get().strip()
-
-        if not (roll_number and course and semester and subject and marks_obtained and max_marks and grade):
+        if not (roll_number and course_name and semester and subject and marks_obtained and max_marks and grade):
             messagebox.showwarning("Input Error", "Please fill in all fields.")
             return
-
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            cursor.execute("SELECT student_id FROM students WHERE roll_number=?", (roll_number,))
+            student_row = cursor.fetchone()
+            cursor.execute("SELECT course_id FROM courses WHERE course_name=?", (course_name,))
+            course_row = cursor.fetchone()
+            if not student_row or not course_row:
+                messagebox.showerror("Error", "Student or course not found.")
+                return
+            student_id = student_row[0]
+            course_id = course_row[0]
             cursor.execute(
-                "INSERT INTO marks (roll_number, course, semester, subject, marks_obtained, max_marks, grade) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (roll_number, course, semester, subject, marks_obtained, max_marks, grade),
+                "INSERT INTO marks (student_id, course_id, subject_name, semester, marks_obtained, max_marks, grade) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (student_id, course_id, subject, int(semester), float(marks_obtained), float(max_marks), grade)
             )
             conn.commit()
             messagebox.showinfo("Success", "Marks added successfully.")
@@ -92,23 +99,27 @@ class MarksTab:
         if not roll_number:
             messagebox.showwarning("Input Error", "Please enter a roll number to display marks.")
             return
-
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            cursor.execute("SELECT student_id FROM students WHERE roll_number=?", (roll_number,))
+            student_row = cursor.fetchone()
+            if not student_row:
+                messagebox.showerror("Error", "Student not found.")
+                return
+            student_id = student_row[0]
             cursor.execute(
-                "SELECT subject, semester, marks_obtained, max_marks, grade FROM marks WHERE roll_number = ?",
-                (roll_number,),
+                "SELECT subject_name, semester, marks_obtained, max_marks, grade FROM marks WHERE student_id = ?",
+                (student_id,),
             )
             rows = cursor.fetchall()
-
+            for row in self.marks_tree.get_children():
+                self.marks_tree.delete(row)
             if not rows:
                 messagebox.showinfo("No Data", "No marks found for the given roll number.")
                 return
-
             for row in rows:
                 self.marks_tree.insert("", "end", values=row)
-
             messagebox.showinfo("Success", "Marks displayed successfully.")
         except Exception as e:
             messagebox.showerror("Database Error", f"An error occurred: {e}")
