@@ -15,27 +15,6 @@ import sys
 from pdf2image import convert_from_path
 from PIL import ImageTk, Image
 
-def preview_pdf(parent, pdf_path):
-    try:
-        # Convert first page of PDF to image
-        images = convert_from_path(pdf_path, first_page=1, last_page=1)
-        if not images:
-            raise Exception("No pages found in PDF.")
-        img = images[0]
-        # Resize for preview window
-        img.thumbnail((800, 1000))
-        preview_win = tk.Toplevel(parent)
-        preview_win.title("PDF Preview")
-        preview_win.geometry(f"{img.width}x{img.height+40}")
-        tk.Label(preview_win, text="PDF Preview (first page)").pack()
-        tk_img = ImageTk.PhotoImage(img)
-        label = tk.Label(preview_win, image=tk_img)
-        label.image = tk_img  # Keep reference
-        label.pack()
-    except Exception as e:
-        from tkinter import messagebox
-        messagebox.showerror("Preview Error", f"Could not preview PDF: {e}")
-
 class ReportsTab:
     def __init__(self, parent, master):
         self.master = master
@@ -72,8 +51,6 @@ class ReportsTab:
         self.export_csv_btn.pack(side="left", padx=5)
         self.share_email_btn = ttk.Button(self.actions_frame, text="Share via Email...", command=self.share_report_email, state="disabled")
         self.share_email_btn.pack(side="left", padx=5)
-        preview_btn = ttk.Button(parent_frame, text="Preview Last PDF", command=lambda: preview_pdf(self.master, getattr(self, 'last_exported_pdf', None)), bootstyle="info")
-        preview_btn.pack(side="left", padx=5, pady=5)
 
     def generate_report(self):
         report_type = self.report_type_combo.get()
@@ -182,7 +159,6 @@ class ReportsTab:
                 pass
             # Log delivery with all required arguments
             log_delivery("PDF Report", file_path, "local", "file", "Success")
-            self.last_exported_pdf = file_path
         except Exception as e:
             messagebox.showerror("Export Error", f"Error exporting report as PDF: {e}")
 
@@ -213,3 +189,24 @@ class ReportsTab:
             return
         email_dialog = EmailDialog(self.master, "Share Report via Email", self.current_report_data, self.report_type_combo.get())
         email_dialog.grab_set()
+
+def preview_pdf(parent, pdf_path):
+    try:
+        # Convert first page of PDF to image
+        images = convert_from_path(pdf_path, first_page=1, last_page=1)
+        if not images:
+            raise Exception("No pages found in PDF.")
+        img = images[0]
+        # Resize for preview window
+        img.thumbnail((800, 1000))
+        preview_win = tk.Toplevel(parent)
+        preview_win.title("PDF Preview")
+        preview_win.geometry(f"{img.width}x{img.height+40}")
+        tk.Label(preview_win, text="PDF Preview (first page)").pack()
+        tk_img = ImageTk.PhotoImage(img)
+        label = tk.Label(preview_win, image=tk_img)
+        label.image = tk_img  # Keep reference
+        label.pack()
+    except Exception as e:
+        from tkinter import messagebox
+        messagebox.showerror("Preview Error", f"Could not preview PDF: {e}")
