@@ -9,7 +9,9 @@ from app.utils.logger import log_delivery
 from datetime import datetime
 import csv
 import tempfile
-from app.utils.email_utils import EmailDialog
+from app.utils.email_utils import email_dialog_with_attachment
+import os
+import sys
 
 class ReportsTab:
     def __init__(self, parent, master):
@@ -120,18 +122,36 @@ class ReportsTab:
             elements.append(header)
             elements.append(Spacer(1, 12))
             data = [list(self.current_report_data[0].keys())] + [list(row) for row in self.current_report_data]
-            table = Table(data)
-            table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                                       ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                                       ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                                       ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 12),
-                                       ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                                       ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                                       ('GRID', (0, 0), (-1, -1), 1, colors.black)]))
+            # Set column widths
+            page_width = letter[0] - 2 * doc.leftMargin
+            ncols = len(data[0])
+            col_width = page_width / ncols
+            table = Table(data, colWidths=[col_width]*ncols)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10 if ncols > 6 else 12),
+                ('FONTSIZE', (0, 0), (-1, -1), 8 if ncols > 6 else 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.black)
+            ]))
             elements.append(table)
             doc.build(elements)
             messagebox.showinfo("Success", f"Report exported successfully as PDF:\n{file_path}")
+            # Optionally open the PDF after export
+            try:
+                if sys.platform == "win32":
+                    os.startfile(file_path)
+                elif sys.platform == "darwin":
+                    os.system(f"open '{file_path}'")
+                else:
+                    os.system(f"xdg-open '{file_path}'")
+            except Exception:
+                pass
             log_delivery("PDF Report", file_path)
+            email_dialog_with_attachment(self.master, file_path)
         except Exception as e:
             messagebox.showerror("Export Error", f"Error exporting report as PDF: {e}")
 

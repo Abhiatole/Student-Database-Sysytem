@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from app.db.models import Student
+from ttkbootstrap.tooltip import ToolTip
 from PIL import Image, ImageTk
 import os
 import random
@@ -117,10 +118,13 @@ class StudentManagementFrame(ttk.Frame):
         student_id = self.tree.item(selected[0])['values'][0]
         data = self.get_form_data()
         try:
-            Student.update(student_id, data)
-            self.refresh_student_list()
-            messagebox.showinfo("Success", "Student updated successfully.")
-            self.clear_form()
+            updated = Student.update(student_id, data)
+            if updated:
+                self.refresh_student_list()
+                messagebox.showinfo("Success", "Student updated successfully.")
+                self.clear_form()
+            else:
+                messagebox.showwarning("Update Failed", "No changes were made or student not found.")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update student: {e}")
 
@@ -135,10 +139,13 @@ class StudentManagementFrame(ttk.Frame):
         student_id = self.tree.item(selected[0])['values'][0]
         if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this student?"):
             try:
-                Student.delete(student_id)
-                self.refresh_student_list()
-                messagebox.showinfo("Success", "Student deleted successfully.")
-                self.clear_form()
+                deleted = Student.delete(student_id)
+                if deleted:
+                    self.refresh_student_list()
+                    messagebox.showinfo("Success", "Student deleted successfully.")
+                    self.clear_form()
+                else:
+                    messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete student: {e}")
 
@@ -147,12 +154,19 @@ class StudentManagementFrame(ttk.Frame):
             entry.delete(0, tk.END)
         self.profile_pic_path.set("")
         self.profile_pic_label.config(text="No file selected")
-        self.tree.selection_remove(self.tree.selection())
+        if hasattr(self, 'tree'):
+            self.tree.selection_remove(self.tree.selection())
+        messagebox.showinfo("Cleared", "Form cleared.")
 
     def refresh_student_list(self):
+        if not hasattr(self, 'tree'):
+            return
         for row in self.tree.get_children():
             self.tree.delete(row)
-        for student in Student.get_all():
+        students = Student.get_all()
+        if not students:
+            messagebox.showinfo("No Data", "No students found in the database.")
+        for student in students:
             values = [student.get(f) for f in self.tree['columns']]
             self.tree.insert('', 'end', values=values)
 
@@ -183,6 +197,66 @@ class StudentManagementFrame(ttk.Frame):
             if any(query in str(value).lower() for value in student.values()):
                 values = [student.get(f) for f in self.tree['columns']]
                 self.tree.insert('', 'end', values=values)
+
+    def generate_sample_students(self):
+        first_names = ["Amit", "Priya", "Rahul", "Sneha", "Vikas", "Anjali", "Rohan", "Pooja", "Suresh", "Neha"]
+        last_names = ["Sharma", "Patel", "Singh", "Gupta", "Mehta", "Jain", "Kumar", "Verma", "Reddy", "Chopra"]
+        blood_groups = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
+        genders = ["Male", "Female", "Other"]
+        courses = [1, 2, 3, 4, 5]
+        years = [1, 2, 3, 4, 5]
+
+        used_roll_numbers = set()
+        for i in range(100):
+            while True:
+                roll_number = f"R{random.randint(10000,99999)}"
+                if roll_number not in used_roll_numbers:
+                    used_roll_numbers.add(roll_number)
+                    break
+            fname = random.choice(first_names)
+            lname = random.choice(last_names)
+            name = f"{fname} {lname}"
+            contact_number = f"9{random.randint(100000000,999999999)}"
+            email = f"{fname.lower()}.{lname.lower()}{random.randint(1,99)}@example.com"
+            address = f"{random.randint(1,200)}, Main Street, City"
+            aadhaar_no = f"{random.randint(100000000000,999999999999)}"
+            dob = (datetime.now() - timedelta(days=random.randint(6000, 9000))).strftime("%Y-%m-%d")
+            gender = random.choice(genders)
+            tenth_percent = round(random.uniform(60, 99), 2)
+            twelfth_percent = round(random.uniform(60, 99), 2)
+            blood_group = random.choice(blood_groups)
+            mother_name = f"{random.choice(first_names)} {lname}"
+            enrollment_date = (datetime.now() - timedelta(days=random.randint(0, 1000))).strftime("%Y-%m-%d")
+            course_id = random.choice(courses)
+            academic_year_id = random.choice(years)
+            profile_picture_path = None
+
+            data = {
+                "roll_number": roll_number,
+                "name": name,
+                "contact_number": contact_number,
+                "email": email,
+                "address": address,
+                "aadhaar_no": aadhaar_no,
+                "date_of_birth": dob,
+                "gender": gender,
+                "tenth_percent": tenth_percent,
+                "twelfth_percent": twelfth_percent,
+                "blood_group": blood_group,
+                "mother_name": mother_name,
+                "enrollment_date": enrollment_date,
+                "course_id": course_id,
+                "academic_year_id": academic_year_id,
+                "profile_picture_path": profile_picture_path,
+                "enrollment_status": 1
+            }
+            try:
+                Student.create(data)
+            except Exception as e:
+                print(f"Error adding sample student: {e}")
+
+        self.refresh_student_list()
+        messagebox.showinfo("Success", "100 random student entries added.")
 
 from ttkbootstrap import ttk
 
@@ -308,10 +382,13 @@ class StudentManagementTab:
         student_id = self.tree.item(selected[0])['values'][0]
         data = self.get_form_data()
         try:
-            Student.update(student_id, data)
-            self.refresh_student_list()
-            messagebox.showinfo("Success", "Student updated successfully.")
-            self.clear_form()
+            updated = Student.update(student_id, data)
+            if updated:
+                self.refresh_student_list()
+                messagebox.showinfo("Success", "Student updated successfully.")
+                self.clear_form()
+            else:
+                messagebox.showwarning("Update Failed", "No changes were made or student not found.")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update student: {e}")
 
@@ -326,10 +403,13 @@ class StudentManagementTab:
         student_id = self.tree.item(selected[0])['values'][0]
         if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this student?"):
             try:
-                Student.delete(student_id)
-                self.refresh_student_list()
-                messagebox.showinfo("Success", "Student deleted successfully.")
-                self.clear_form()
+                deleted = Student.delete(student_id)
+                if deleted:
+                    self.refresh_student_list()
+                    messagebox.showinfo("Success", "Student deleted successfully.")
+                    self.clear_form()
+                else:
+                    messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete student: {e}")
 
@@ -338,12 +418,19 @@ class StudentManagementTab:
             entry.delete(0, tk.END)
         self.profile_pic_path.set("")
         self.profile_pic_label.config(text="No file selected")
-        self.tree.selection_remove(self.tree.selection())
+        if hasattr(self, 'tree'):
+            self.tree.selection_remove(self.tree.selection())
+        messagebox.showinfo("Cleared", "Form cleared.")
 
     def refresh_student_list(self):
+        if not hasattr(self, 'tree'):
+            return
         for row in self.tree.get_children():
             self.tree.delete(row)
-        for student in Student.get_all():
+        students = Student.get_all()
+        if not students:
+            messagebox.showinfo("No Data", "No students found in the database.")
+        for student in students:
             values = [student.get(f) for f in self.tree['columns']]
             self.tree.insert('', 'end', values=values)
 
@@ -383,11 +470,16 @@ class StudentManagementTab:
         courses = [1, 2, 3, 4, 5]
         years = [1, 2, 3, 4, 5]
 
+        used_roll_numbers = set()
         for i in range(100):
+            while True:
+                roll_number = f"R{random.randint(10000,99999)}"
+                if roll_number not in used_roll_numbers:
+                    used_roll_numbers.add(roll_number)
+                    break
             fname = random.choice(first_names)
             lname = random.choice(last_names)
             name = f"{fname} {lname}"
-            roll_number = f"R{random.randint(10000,99999)}"
             contact_number = f"9{random.randint(100000000,999999999)}"
             email = f"{fname.lower()}.{lname.lower()}{random.randint(1,99)}@example.com"
             address = f"{random.randint(1,200)}, Main Street, City"
