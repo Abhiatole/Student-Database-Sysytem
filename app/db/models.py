@@ -57,3 +57,11 @@ class Student:
             cursor.execute('DELETE FROM students WHERE student_id=?', (student_id,))
             conn.commit()
             return cursor.rowcount > 0
+
+    @staticmethod
+    def get_bin():
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM students WHERE deleted=1')
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
