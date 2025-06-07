@@ -74,7 +74,13 @@ class MainApplication:
         for text, tab_class in tabs.items():
             frame = ttk.Frame(self.notebook, padding=10)
             self.notebook.add(frame, text=text)
-            tab_class(frame)
+            try:
+                tab_class(frame)
+            except Exception as e:
+                print(f"Error initializing tab '{text}': {e}")
+                import traceback
+                traceback.print_exc()
+                ttk.Label(frame, text=f"Failed to load tab: {e}", foreground="red").pack()
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
 
     def change_theme(self, event=None):
