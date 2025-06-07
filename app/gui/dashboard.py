@@ -14,36 +14,48 @@ class DashboardTab:
         self.setup_home_tab(parent)
 
     def setup_home_tab(self, parent_frame):
+        self.parent_frame = parent_frame
         parent_frame.rowconfigure(0, weight=1)
         parent_frame.columnconfigure(0, weight=1)
-        header_frame = ttk.Frame(parent_frame)
-        header_frame.grid(row=0, column=0, sticky="ew", pady=10)
+        self.header_frame = ttk.Frame(parent_frame)
+        self.header_frame.grid(row=0, column=0, sticky="ew", pady=10)
         if self.logo_img:
-            ttk.Label(header_frame, image=self.logo_img).pack(side="left", padx=10)
-        title_frame = ttk.Frame(header_frame)
-        title_frame.pack(side="left", fill="x", expand=True)
-        ttk.Label(title_frame, text="Welcome to the Dashboard", font=("Helvetica", 24, "bold"), bootstyle="primary").pack(anchor='w')
-        ttk.Label(title_frame, text="Your central hub for student data management and insights.", font=("Helvetica", 12)).pack(anchor='w')
-        content_frame = ttk.Frame(parent_frame)
-        content_frame.grid(row=1, column=0, sticky="nsew")
-        content_frame.columnconfigure(1, weight=1)
-        content_frame.rowconfigure(0, weight=1)
-        stats_frame = ttk.Frame(content_frame, padding=10)
-        stats_frame.grid(row=0, column=0, sticky="ns", padx=10)
-        ttk.Label(stats_frame, text="Quick Statistics", font=("Helvetica", 14, "bold"), bootstyle="info").pack(pady=(0, 10), anchor='w')
+            ttk.Label(self.header_frame, image=self.logo_img).pack(side="left", padx=10)
+        self.title_frame = ttk.Frame(self.header_frame)
+        self.title_frame.pack(side="left", fill="x", expand=True)
+        ttk.Label(self.title_frame, text="Welcome to the Dashboard", font=("Helvetica", 24, "bold"), bootstyle="primary").pack(anchor='w')
+        ttk.Label(self.title_frame, text="Your central hub for student data management and insights.", font=("Helvetica", 12)).pack(anchor='w')
+        self.content_frame = ttk.Frame(parent_frame)
+        self.content_frame.grid(row=1, column=0, sticky="nsew")
+        self.content_frame.columnconfigure(1, weight=1)
+        self.content_frame.rowconfigure(0, weight=1)
+        self.stats_frame = ttk.Frame(self.content_frame, padding=10)
+        self.stats_frame.grid(row=0, column=0, sticky="ns", padx=10)
+        ttk.Label(self.stats_frame, text="Quick Statistics", font=("Helvetica", 14, "bold"), bootstyle="info").pack(pady=(0, 10), anchor='w')
+        self.stat_cards = []
+        self.chart_frame = ttk.LabelFrame(self.content_frame, text="Analytics Snapshot", padding=15, bootstyle="info")
+        self.chart_frame.grid(row=0, column=1, sticky="nsew", padx=10)
+        self.footer_label = ttk.Label(parent_frame, text="@developed by Rushikesh Atole and Team", font=("Helvetica", 10, "italic"), bootstyle="secondary")
+        self.footer_label.grid(row=2, column=0, sticky="e", padx=10, pady=5)
+        self.refresh_stats()
+
+    def refresh_stats(self):
+        # Clear previous stat cards and chart
+        for widget in self.stats_frame.winfo_children():
+            widget.destroy()
+        for widget in self.chart_frame.winfo_children():
+            widget.destroy()
+        ttk.Label(self.stats_frame, text="Quick Statistics", font=("Helvetica", 14, "bold"), bootstyle="info").pack(pady=(0, 10), anchor='w')
+        from app.db.database import get_db_connection
         conn = get_db_connection()
         total_students = conn.execute("SELECT COUNT(*) FROM students").fetchone()[0]
         active_courses = conn.execute("SELECT COUNT(*) FROM courses").fetchone()[0]
         total_revenue = conn.execute("SELECT SUM(amount_paid) FROM payments").fetchone()[0] or 0
         conn.close()
-        self._create_stat_card(stats_frame, "Total Students", f"{total_students}", "primary")
-        self._create_stat_card(stats_frame, "Active Courses", f"{active_courses}", "success")
-        self._create_stat_card(stats_frame, "Total Revenue (INR)", f"{total_revenue:,.2f}", "warning")
-        chart_frame = ttk.LabelFrame(content_frame, text="Analytics Snapshot", padding=15, bootstyle="info")
-        chart_frame.grid(row=0, column=1, sticky="nsew", padx=10)
-        self.create_faculty_pie_chart(chart_frame)
-        footer_label = ttk.Label(parent_frame, text="@developed by Rushikesh Atole and Team", font=("Helvetica", 10, "italic"), bootstyle="secondary")
-        footer_label.grid(row=2, column=0, sticky="e", padx=10, pady=5)
+        self._create_stat_card(self.stats_frame, "Total Students", f"{total_students}", "primary")
+        self._create_stat_card(self.stats_frame, "Active Courses", f"{active_courses}", "success")
+        self._create_stat_card(self.stats_frame, "Total Revenue (INR)", f"{total_revenue:,.2f}", "warning")
+        self.create_faculty_pie_chart(self.chart_frame)
 
     def _create_stat_card(self, parent, title, value, bootstyle):
         card = ttk.Frame(parent, padding=15, bootstyle=bootstyle)

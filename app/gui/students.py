@@ -117,6 +117,11 @@ class StudentManagementFrame(ttk.Frame):
             self.refresh_student_list()
             messagebox.showinfo("Success", "Student added successfully.")
             self.clear_form()
+            # Refresh dashboard
+            from app.main import MainApplication
+            app = self.winfo_toplevel().main_app_instance if hasattr(self.winfo_toplevel(), 'main_app_instance') else None
+            if app and app.dashboard_tab_instance:
+                app.dashboard_tab_instance.refresh_stats()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to add student: {e}")
 
@@ -165,6 +170,11 @@ class StudentManagementFrame(ttk.Frame):
                     self.refresh_student_list()
                     messagebox.showinfo("Success", "Student deleted successfully.")
                     self.clear_form()
+                    # Refresh dashboard
+                    from app.main import MainApplication
+                    app = self.winfo_toplevel().main_app_instance if hasattr(self.winfo_toplevel(), 'main_app_instance') else None
+                    if app and app.dashboard_tab_instance:
+                        app.dashboard_tab_instance.refresh_stats()
                 else:
                     messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
             except Exception as e:
@@ -463,6 +473,11 @@ class StudentManagementTab:
             self.refresh_student_list()
             messagebox.showinfo("Success", "Student added successfully.")
             self.clear_form()
+            # Refresh dashboard
+            from app.main import MainApplication
+            app = self.winfo_toplevel().main_app_instance if hasattr(self.winfo_toplevel(), 'main_app_instance') else None
+            if app and app.dashboard_tab_instance:
+                app.dashboard_tab_instance.refresh_stats()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to add student: {e}")
 
@@ -511,6 +526,11 @@ class StudentManagementTab:
                     self.refresh_student_list()
                     messagebox.showinfo("Success", "Student deleted successfully.")
                     self.clear_form()
+                    # Refresh dashboard
+                    from app.main import MainApplication
+                    app = self.winfo_toplevel().main_app_instance if hasattr(self.winfo_toplevel(), 'main_app_instance') else None
+                    if app and app.dashboard_tab_instance:
+                        app.dashboard_tab_instance.refresh_stats()
                 else:
                     messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
             except Exception as e:
@@ -563,7 +583,7 @@ class StudentManagementTab:
         if not students:
             messagebox.showinfo("No Data", "No students found in the database.")
         for student in students:
-            values = [student.get('student_id')] + [student.get(f) for f in self.tree['columns'] if f != 'student_id']
+            values = [student.get(f) for f in self.tree['columns']]
             self.tree.insert('', 'end', values=values)
 
     def on_tree_select(self, event):

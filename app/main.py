@@ -27,6 +27,7 @@ def add_window_controls(root):
 class MainApplication:
     def __init__(self, master):
         self.master = master
+        self.master.main_app_instance = self  # Add this line
         self.master.deiconify()
         self.master.title("Student Database Management System")
         self.master.geometry("1366x768")
@@ -41,6 +42,7 @@ class MainApplication:
         banner_path = os.path.join(resources_dir, "college_banner.png")
         self.logo_img = load_image(logo_path, size=(64, 64))
         self.banner_img = load_image(banner_path, size=(800, 200))
+        self.dashboard_tab_instance = None  # Add this line
         self.create_main_widgets()
 
     def create_main_widgets(self):
@@ -62,7 +64,7 @@ class MainApplication:
         self.notebook = ttk.Notebook(main_frame)
         self.notebook.pack(expand=True, fill="both", padx=10, pady=10)
         tabs = {
-            "🏠 Home": lambda f: DashboardTab(f, self.style, self.logo_img),
+            "🏠 Home": lambda f: self._init_dashboard_tab(f),
             "🎓 Student Management": StudentManagementTab,
             "📊 Reporting & Export": lambda f: ReportsTab(f, self.master),
             "📈 Analytics & Insights": lambda f: AnalyticsTab(f, self.style),
@@ -82,6 +84,9 @@ class MainApplication:
                 traceback.print_exc()
                 ttk.Label(frame, text=f"Failed to load tab: {e}", foreground="red").pack()
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
+
+    def _init_dashboard_tab(self, frame):
+        self.dashboard_tab_instance = DashboardTab(frame, self.style, self.logo_img)
 
     def change_theme(self, event=None):
         new_theme = self.theme_var.get()
