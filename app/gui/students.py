@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from app.db.database import get_db_connection
 
 def ensure_deleted_column():
+    from app.db.database import get_db_connection
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("PRAGMA table_info(students)")
@@ -409,7 +410,7 @@ class StudentManagementTab:
         ttk.Button(btn_frame, text="Delete", command=self.delete_student, bootstyle="danger").pack(side='left', padx=2)
         ttk.Button(btn_frame, text="Clear", command=self.clear_form, bootstyle="secondary").pack(side='left', padx=2)
         # Add "Move to Bin" button
-        ttk.Button(btn_frame, text="Move to Bin", command=self.bulk_soft_delete, bootstyle="danger").pack(side='left', padx=2)
+        ttk.Button(btn_frame, text="Move to Bin", command=self.batch_delete_students, bootstyle="danger").pack(side='left', padx=2)
         # Add tooltip for "Move to Bin" button
         ToolTip(btn_frame.winfo_children()[-1], text="Move selected students to bin (soft delete)")
 

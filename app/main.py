@@ -13,6 +13,7 @@ from app.db.database import init_db
 from app.utils.image_utils import load_image
 from app.gui.login import LoginWindow
 from app.gui.students import BinTab
+from app.gui.students import ensure_deleted_column
 import os
 
 def add_window_controls(root):
@@ -102,6 +103,7 @@ class MainApplication:
 def main():
     try:
         init_db()
+        ensure_deleted_column()  # <-- Add this line
     except Exception as e:
         tk.messagebox.showerror("Database Error", f"Failed to initialize database: {e}")
         exit(1)
