@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from app.utils.security import verify_password
 from app.db.database import get_db_connection
-from app.main import MainApplication
 
 class LoginWindow:
     def __init__(self, master):
@@ -38,6 +37,7 @@ class LoginWindow:
         cursor.execute("SELECT password_hash FROM users WHERE user_id=?", (username,))
         row = cursor.fetchone()
         conn.close()
+        from app.main import MainApplication  # <-- Import here to avoid circular import
         if row and verify_password(password, row[0]):
             self.login_root.destroy()
             self.master.deiconify()
