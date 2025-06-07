@@ -1,0 +1,6 @@
+# Core dependencies
+python-dotenv
+Pillow
+reportlab
+matplotlib
+ttkbootstrap

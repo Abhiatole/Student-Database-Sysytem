@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: student_dbms
+Version: 1.0.0
+Summary: Industry-grade Student Database Management System
+Author: Rushikesh Atole and Team
+Requires-Python: >=3.8
+Requires-Dist: python-dotenv
+Requires-Dist: Pillow
+Requires-Dist: reportlab
+Requires-Dist: matplotlib
+Requires-Dist: ttkbootstrap
+Dynamic: author
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
