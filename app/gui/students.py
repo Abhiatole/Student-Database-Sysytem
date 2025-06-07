@@ -741,10 +741,10 @@ class BinTab:
         if not selected_items:
             messagebox.showwarning("Select Students", "Select students to move to bin.")
             return
-        # Assuming student_id is the first column in your treeview
-        student_ids = [self.tree.item(item)['values'][0] for item in selected_items]
+        student_ids = [self.tree.item(item)['values'][0] for item in selected_items]  # [0] is student_id
         if not messagebox.askyesno("Confirm", f"Move {len(student_ids)} students to bin?"):
             return
+        from app.db.models import Student
         count = Student.soft_delete(student_ids)
         self.refresh_student_list()
         messagebox.showinfo("Moved to Bin", f"{count} students moved to bin.")
