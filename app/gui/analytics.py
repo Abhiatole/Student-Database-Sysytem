@@ -5,6 +5,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from app.db.database import get_db_connection
 
 # Analytics and charting logic
+# This module provides a tab for visualizing student data analytics.
+# Example: Bar chart showing number of students per course.
+# You can extend this by adding more charts (pie, line, etc.) and more queries.
 
 class AnalyticsTab:
     def __init__(self, parent, style):
