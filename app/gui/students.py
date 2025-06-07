@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 import os
 import random
 from datetime import datetime, timedelta
-from app.db import get_db_connection
+from app.db.database import get_db_connection
 
 class StudentManagementFrame(ttk.Frame):
     def __init__(self, parent):
