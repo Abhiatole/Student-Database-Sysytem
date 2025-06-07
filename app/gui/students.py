@@ -6,6 +6,7 @@ from PIL import Image, ImageTk
 import os
 import random
 from datetime import datetime, timedelta
+from app.db import get_db_connection
 
 class StudentManagementFrame(ttk.Frame):
     def __init__(self, parent):
@@ -86,11 +87,20 @@ class StudentManagementFrame(ttk.Frame):
 
     def get_form_data(self):
         data = {k: v.get() for k, v in self.entries.items()}
+        # For course_id and academic_year_id, extract the ID if selected from dropdown
+        for k in ['course_id', 'academic_year_id']:
+            if data[k] and '-' in data[k]:
+                data[k] = int(data[k].split('-')[0].strip())
+            elif data[k]:
+                try:
+                    data[k] = int(data[k])
+                except ValueError:
+                    pass  # Let validation handle it
         # Convert numeric fields
-        for k in ['tenth_percent', 'twelfth_percent', 'course_id', 'academic_year_id']:
+        for k in ['tenth_percent', 'twelfth_percent']:
             if data[k]:
                 try:
-                    data[k] = float(data[k]) if 'percent' in k else int(data[k])
+                    data[k] = float(data[k])
                 except ValueError:
                     data[k] = None
         data['profile_picture_path'] = self.profile_pic_path.get() if self.profile_pic_path.get() else None
@@ -136,7 +146,18 @@ class StudentManagementFrame(ttk.Frame):
         if not selected:
             messagebox.showwarning("Select Student", "Select a student to delete.")
             return
-        student_id = self.tree.item(selected[0])['values'][0]
+        roll_number = self.tree.item(selected[0])['values'][0]
+        # Lookup student_id by roll_number
+        from app.db.database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT student_id FROM students WHERE roll_number=?", (roll_number,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
+            return
+        student_id = row[0]
         if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this student?"):
             try:
                 deleted = Student.delete(student_id)
@@ -148,6 +169,35 @@ class StudentManagementFrame(ttk.Frame):
                     messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete student: {e}")
+
+    def batch_delete_students(self):
+        if not hasattr(self, 'tree'):
+            messagebox.showerror("Error", "Student list not initialized.")
+            return
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Select Students", "Select students to delete.")
+            return
+        if not messagebox.askyesno("Confirm Batch Delete", f"Are you sure you want to delete {len(selected_items)} students?"):
+            return
+        deleted_count = 0
+        for item in selected_items:
+            roll_number = self.tree.item(item)['values'][1]  # [1] because [0] is student_id
+            from app.db.database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT student_id FROM students WHERE roll_number=?", (roll_number,))
+            row = cursor.fetchone()
+            conn.close()
+            if row:
+                student_id = row[0]
+                try:
+                    if Student.delete(student_id):
+                        deleted_count += 1
+                except Exception as e:
+                    print(f"Error deleting student: {e}")
+        self.refresh_student_list()
+        messagebox.showinfo("Batch Delete", f"Deleted {deleted_count} students.")
 
     def clear_form(self):
         for entry in self.entries.values():
@@ -207,10 +257,14 @@ class StudentManagementFrame(ttk.Frame):
         years = [1, 2, 3, 4, 5]
 
         used_roll_numbers = set()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT roll_number FROM students")
+        existing_roll_numbers = set(row[0] for row in cursor.fetchall())
         for i in range(100):
             while True:
                 roll_number = f"R{random.randint(10000,99999)}"
-                if roll_number not in used_roll_numbers:
+                if roll_number not in used_roll_numbers and roll_number not in existing_roll_numbers:
                     used_roll_numbers.add(roll_number)
                     break
             fname = random.choice(first_names)
@@ -255,6 +309,7 @@ class StudentManagementFrame(ttk.Frame):
             except Exception as e:
                 print(f"Error adding sample student: {e}")
 
+        conn.close()
         self.refresh_student_list()
         messagebox.showinfo("Success", "100 random student entries added.")
 
@@ -291,7 +346,31 @@ class StudentManagementTab:
         ]
         for idx, (key, label) in enumerate(fields):
             ttk.Label(form_frame, text=label).grid(row=idx, column=0, sticky="w", pady=2)
-            entry = ttk.Entry(form_frame)
+            if key == "gender":
+                entry = ttk.Combobox(form_frame, values=["Male", "Female", "Other"], state="normal")
+            elif key == "blood_group":
+                entry = ttk.Combobox(form_frame, values=["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"], state="normal")
+            elif key == "course_id":
+                # Fetch course names from DB
+                from app.db.database import get_db_connection
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT course_id, course_name FROM courses")
+                courses = cursor.fetchall()
+                conn.close()
+                course_options = [f"{row['course_id']} - {row['course_name']}" for row in courses]
+                entry = ttk.Combobox(form_frame, values=course_options, state="normal")
+            elif key == "academic_year_id":
+                from app.db.database import get_db_connection
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT year_id, year_name FROM academic_years")
+                years = cursor.fetchall()
+                conn.close()
+                year_options = [f"{row['year_id']} - {row['year_name']}" for row in years]
+                entry = ttk.Combobox(form_frame, values=year_options, state="normal")
+            else:
+                entry = ttk.Entry(form_frame)
             entry.grid(row=idx, column=1, pady=2, sticky="ew")
             self.entries[key] = entry
 
@@ -326,11 +405,15 @@ class StudentManagementTab:
         ttk.Button(search_frame, text="Show All", command=self.refresh_student_list).pack(side="left", padx=2)
 
         # Treeview
-        columns = [f[0] for f in fields] + ['profile_picture_path']
+        columns = ['student_id'] + [f[0] for f in fields] + ['profile_picture_path']
         self.tree = ttk.Treeview(parent_frame, columns=columns, show='headings', height=20)
         for key in columns:
             self.tree.heading(key, text=key.replace('_', ' ').title())
-            self.tree.column(key, width=100)
+            # Optionally hide the student_id column
+            if key == 'student_id':
+                self.tree.column(key, width=0, stretch=False)
+            else:
+                self.tree.column(key, width=100)
         # Scrollbars
         vsb = ttk.Scrollbar(parent_frame, orient="vertical", command=self.tree.yview)
         hsb = ttk.Scrollbar(parent_frame, orient="horizontal", command=self.tree.xview)
@@ -350,11 +433,20 @@ class StudentManagementTab:
 
     def get_form_data(self):
         data = {k: v.get() for k, v in self.entries.items()}
+        # For course_id and academic_year_id, extract the ID if selected from dropdown
+        for k in ['course_id', 'academic_year_id']:
+            if data[k] and '-' in data[k]:
+                data[k] = int(data[k].split('-')[0].strip())
+            elif data[k]:
+                try:
+                    data[k] = int(data[k])
+                except ValueError:
+                    pass  # Let validation handle it
         # Convert numeric fields
-        for k in ['tenth_percent', 'twelfth_percent', 'course_id', 'academic_year_id']:
+        for k in ['tenth_percent', 'twelfth_percent']:
             if data[k]:
                 try:
-                    data[k] = float(data[k]) if 'percent' in k else int(data[k])
+                    data[k] = float(data[k])
                 except ValueError:
                     data[k] = None
         data['profile_picture_path'] = self.profile_pic_path.get() if self.profile_pic_path.get() else None
@@ -400,7 +492,18 @@ class StudentManagementTab:
         if not selected:
             messagebox.showwarning("Select Student", "Select a student to delete.")
             return
-        student_id = self.tree.item(selected[0])['values'][0]
+        roll_number = self.tree.item(selected[0])['values'][0]
+        # Lookup student_id by roll_number
+        from app.db.database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT student_id FROM students WHERE roll_number=?", (roll_number,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
+            return
+        student_id = row[0]
         if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this student?"):
             try:
                 deleted = Student.delete(student_id)
@@ -412,6 +515,35 @@ class StudentManagementTab:
                     messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete student: {e}")
+
+    def batch_delete_students(self):
+        if not hasattr(self, 'tree'):
+            messagebox.showerror("Error", "Student list not initialized.")
+            return
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Select Students", "Select students to delete.")
+            return
+        if not messagebox.askyesno("Confirm Batch Delete", f"Are you sure you want to delete {len(selected_items)} students?"):
+            return
+        deleted_count = 0
+        for item in selected_items:
+            roll_number = self.tree.item(item)['values'][1]  # [1] because [0] is student_id
+            from app.db.database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT student_id FROM students WHERE roll_number=?", (roll_number,))
+            row = cursor.fetchone()
+            conn.close()
+            if row:
+                student_id = row[0]
+                try:
+                    if Student.delete(student_id):
+                        deleted_count += 1
+                except Exception as e:
+                    print(f"Error deleting student: {e}")
+        self.refresh_student_list()
+        messagebox.showinfo("Batch Delete", f"Deleted {deleted_count} students.")
 
     def clear_form(self):
         for entry in self.entries.values():
@@ -431,7 +563,7 @@ class StudentManagementTab:
         if not students:
             messagebox.showinfo("No Data", "No students found in the database.")
         for student in students:
-            values = [student.get(f) for f in self.tree['columns']]
+            values = [student.get('student_id')] + [student.get(f) for f in self.tree['columns'] if f != 'student_id']
             self.tree.insert('', 'end', values=values)
 
     def on_tree_select(self, event):
@@ -471,10 +603,14 @@ class StudentManagementTab:
         years = [1, 2, 3, 4, 5]
 
         used_roll_numbers = set()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT roll_number FROM students")
+        existing_roll_numbers = set(row[0] for row in cursor.fetchall())
         for i in range(100):
             while True:
                 roll_number = f"R{random.randint(10000,99999)}"
-                if roll_number not in used_roll_numbers:
+                if roll_number not in used_roll_numbers and roll_number not in existing_roll_numbers:
                     used_roll_numbers.add(roll_number)
                     break
             fname = random.choice(first_names)
@@ -519,5 +655,6 @@ class StudentManagementTab:
             except Exception as e:
                 print(f"Error adding sample student: {e}")
 
+        conn.close()
         self.refresh_student_list()
         messagebox.showinfo("Success", "100 random student entries added.")

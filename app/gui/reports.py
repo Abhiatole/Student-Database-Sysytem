@@ -9,7 +9,7 @@ from app.utils.logger import log_delivery
 from datetime import datetime
 import csv
 import tempfile
-from app.utils.email_utils import email_dialog_with_attachment
+from app.utils.email_utils import EmailDialog, email_dialog_with_attachment
 import os
 import sys
 from pdf2image import convert_from_path
@@ -162,6 +162,45 @@ class ReportsTab:
         except Exception as e:
             messagebox.showerror("Export Error", f"Error exporting report as PDF: {e}")
 
+    def export_report_pdf_to_path(self, file_path):
+        if not hasattr(self, 'current_report_data') or not self.current_report_data:
+            messagebox.showwarning("No Data", "Generate a report first before exporting.")
+            return
+        report_type = self.report_type_combo.get().replace(" ", "_")
+        try:
+            doc = SimpleDocTemplate(file_path, pagesize=letter)
+            elements = []
+            styles = getSampleStyleSheet()
+            header = Paragraph(f"{report_type.replace('_', ' ').title()} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Title'])
+            elements.append(header)
+            elements.append(Spacer(1, 12))
+            # Prepare data with Paragraphs for wrapping
+            headers = list(self.current_report_data[0].keys())
+            data = [headers]
+            for row in self.current_report_data:
+                data.append([Paragraph(str(cell), styles['Normal']) for cell in row])
+            # Set column widths
+            page_width = letter[0] - 2 * doc.leftMargin
+            ncols = len(headers)
+            col_width = max(page_width / ncols, 60)  # Minimum width for readability
+            table = Table(data, colWidths=[col_width]*ncols, repeatRows=1)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 8 if ncols > 6 else 10),
+                ('FONTSIZE', (0, 0), (-1, -1), 7 if ncols > 6 else 9),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ]))
+            elements.append(table)
+            doc.build(elements)
+            # Log delivery with all required arguments
+            log_delivery("PDF Report", file_path, "local", "file", "Success")
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Error exporting report as PDF: {e}")
+
     def export_report_csv(self):
         if not hasattr(self, 'current_report_data') or not self.current_report_data:
             messagebox.showwarning("No Data", "Generate a report first before exporting.")
@@ -187,8 +226,11 @@ class ReportsTab:
         if not hasattr(self, 'current_report_data') or not self.current_report_data:
             messagebox.showwarning("No Data", "Generate a report first before sharing.")
             return
-        email_dialog = EmailDialog(self.master, "Share Report via Email", self.current_report_data, self.report_type_combo.get())
-        email_dialog.grab_set()
+        # Export the report as a temporary PDF and attach it
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            self.export_report_pdf_to_path(tmp.name)
+            email_dialog_with_attachment(self.master, tmp.name)
 
 def preview_pdf(parent, pdf_path):
     try:
