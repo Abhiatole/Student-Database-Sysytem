@@ -12,6 +12,8 @@ import tempfile
 from app.utils.email_utils import email_dialog_with_attachment
 import os
 import sys
+from pdf2image import convert_from_path
+from PIL import ImageTk, Image
 
 class ReportsTab:
     def __init__(self, parent, master):
@@ -121,26 +123,31 @@ class ReportsTab:
             header = Paragraph(f"{report_type.replace('_', ' ').title()} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Title'])
             elements.append(header)
             elements.append(Spacer(1, 12))
-            data = [list(self.current_report_data[0].keys())] + [list(row) for row in self.current_report_data]
+            # Prepare data with Paragraphs for wrapping
+            headers = list(self.current_report_data[0].keys())
+            data = [headers]
+            for row in self.current_report_data:
+                data.append([Paragraph(str(cell), styles['Normal']) for cell in row])
             # Set column widths
             page_width = letter[0] - 2 * doc.leftMargin
-            ncols = len(data[0])
-            col_width = page_width / ncols
-            table = Table(data, colWidths=[col_width]*ncols)
+            ncols = len(headers)
+            col_width = max(page_width / ncols, 60)  # Minimum width for readability
+            table = Table(data, colWidths=[col_width]*ncols, repeatRows=1)
             table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10 if ncols > 6 else 12),
-                ('FONTSIZE', (0, 0), (-1, -1), 8 if ncols > 6 else 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 8 if ncols > 6 else 10),
+                ('FONTSIZE', (0, 0), (-1, -1), 7 if ncols > 6 else 9),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
                 ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.black)
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
             ]))
             elements.append(table)
             doc.build(elements)
             messagebox.showinfo("Success", f"Report exported successfully as PDF:\n{file_path}")
             # Optionally open the PDF after export
+            import sys, os
             try:
                 if sys.platform == "win32":
                     os.startfile(file_path)
@@ -150,8 +157,8 @@ class ReportsTab:
                     os.system(f"xdg-open '{file_path}'")
             except Exception:
                 pass
-            log_delivery("PDF Report", file_path)
-            email_dialog_with_attachment(self.master, file_path)
+            # Log delivery with all required arguments
+            log_delivery("PDF Report", file_path, "local", "file", "Success")
         except Exception as e:
             messagebox.showerror("Export Error", f"Error exporting report as PDF: {e}")
 
@@ -182,3 +189,24 @@ class ReportsTab:
             return
         email_dialog = EmailDialog(self.master, "Share Report via Email", self.current_report_data, self.report_type_combo.get())
         email_dialog.grab_set()
+
+def preview_pdf(parent, pdf_path):
+    try:
+        # Convert first page of PDF to image
+        images = convert_from_path(pdf_path, first_page=1, last_page=1)
+        if not images:
+            raise Exception("No pages found in PDF.")
+        img = images[0]
+        # Resize for preview window
+        img.thumbnail((800, 1000))
+        preview_win = tk.Toplevel(parent)
+        preview_win.title("PDF Preview")
+        preview_win.geometry(f"{img.width}x{img.height+40}")
+        tk.Label(preview_win, text="PDF Preview (first page)").pack()
+        tk_img = ImageTk.PhotoImage(img)
+        label = tk.Label(preview_win, image=tk_img)
+        label.image = tk_img  # Keep reference
+        label.pack()
+    except Exception as e:
+        from tkinter import messagebox
+        messagebox.showerror("Preview Error", f"Could not preview PDF: {e}")
