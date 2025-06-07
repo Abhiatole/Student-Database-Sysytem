@@ -12,7 +12,7 @@ from app.gui.marks import MarksTab
 from app.db.database import init_db
 from app.utils.image_utils import load_image
 from app.gui.login import LoginWindow
-from app.gui.bin_tab import BinTab  # Adjust the import path as needed
+from app.gui.students import BinTab
 import os
 
 def add_window_controls(root):
