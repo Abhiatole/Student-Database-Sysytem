@@ -39,8 +39,9 @@ class LoginWindow:
         conn.close()
         from app.main import MainApplication  # <-- Import here to avoid circular import
         if row and verify_password(password, row[0]):
-            self.login_root.destroy()
+            self.login_root.destroy()  # <-- Destroy the login window first
             self.master.deiconify()
+            self.master.update()       # <-- Update the master window
             MainApplication(self.master)
         else:
             messagebox.showerror("Login Failed", "Invalid username or password.")
