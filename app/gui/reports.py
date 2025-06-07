@@ -9,7 +9,7 @@ from app.utils.logger import log_delivery
 from datetime import datetime
 import csv
 import tempfile
-from app.gui.email_utils import EmailDialog
+from app.utils.email_utils import EmailDialog
 
 class ReportsTab:
     def __init__(self, parent, master):
