@@ -231,14 +231,9 @@ class StudentManagementFrame(ttk.Frame):
         messagebox.showinfo("Cleared", "Form cleared.")
 
     def refresh_student_list(self):
-        if not hasattr(self, 'tree'):
-            return
         for row in self.tree.get_children():
             self.tree.delete(row)
-        students = Student.get_all()
-        if not students:
-            messagebox.showinfo("No Data", "No students found in the database.")
-        for student in students:
+        for student in Student.get_all():
             values = [student.get(f) for f in self.tree['columns']]
             self.tree.insert('', 'end', values=values)
 
@@ -411,7 +406,7 @@ class StudentManagementTab:
         ttk.Button(btn_frame, text="Delete", command=self.delete_student, bootstyle="danger").pack(side='left', padx=2)
         ttk.Button(btn_frame, text="Clear", command=self.clear_form, bootstyle="secondary").pack(side='left', padx=2)
         # Add "Move to Bin" button
-        ttk.Button(btn_frame, text="Move to Bin", command=self.batch_delete_students, bootstyle="danger").pack(side='left', padx=2)
+        ttk.Button(btn_frame, text="Move to Bin", command=self.move_to_bin, bootstyle="danger").pack(side='left', padx=2)
         # Add tooltip for "Move to Bin" button
         ToolTip(btn_frame.winfo_children()[-1], text="Move selected students to bin (soft delete)")
 
@@ -591,14 +586,9 @@ class StudentManagementTab:
         messagebox.showinfo("Cleared", "Form cleared.")
 
     def refresh_student_list(self):
-        if not hasattr(self, 'tree'):
-            return
         for row in self.tree.get_children():
             self.tree.delete(row)
-        students = Student.get_all()
-        if not students:
-            messagebox.showinfo("No Data", "No students found in the database.")
-        for student in students:
+        for student in Student.get_all():
             values = [student.get(f) for f in self.tree['columns']]
             self.tree.insert('', 'end', values=values)
 
@@ -745,3 +735,16 @@ class BinTab:
         count = Student.permanent_delete(student_ids)
         self.refresh_bin()
         messagebox.showinfo("Deleted", f"{count} students permanently deleted.")
+
+    def move_to_bin(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Select Students", "Select students to move to bin.")
+            return
+        # Assuming student_id is the first column in your treeview
+        student_ids = [self.tree.item(item)['values'][0] for item in selected_items]
+        if not messagebox.askyesno("Confirm", f"Move {len(student_ids)} students to bin?"):
+            return
+        count = Student.soft_delete(student_ids)
+        self.refresh_student_list()
+        messagebox.showinfo("Moved to Bin", f"{count} students moved to bin.")

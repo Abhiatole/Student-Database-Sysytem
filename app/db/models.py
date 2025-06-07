@@ -65,3 +65,11 @@ class Student:
             cursor.execute('SELECT * FROM students WHERE deleted=1')
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
+
+    @staticmethod
+    def soft_delete(student_ids):
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany('UPDATE students SET deleted=1 WHERE student_id=?', [(sid,) for sid in student_ids])
+            conn.commit()
+            return cursor.rowcount
