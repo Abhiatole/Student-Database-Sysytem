@@ -335,6 +335,19 @@ from ttkbootstrap import ttk
 class StudentManagementTab:
     def __init__(self, parent):
         self.setup_student_management_tab(parent)
+        
+    def move_to_bin(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Select Students", "Select students to move to bin.")
+            return
+        student_ids = [self.tree.item(item)['values'][0] for item in selected_items]  # [0] is student_id
+        if not messagebox.askyesno("Confirm", f"Move {len(student_ids)} students to bin?"):
+            return
+        from app.db.models import Student
+        count = Student.soft_delete(student_ids)
+        self.refresh_student_list()
+        messagebox.showinfo("Moved to Bin", f"{count} students moved to bin.")
 
     def setup_student_management_tab(self, parent_frame):
         self.parent_frame = parent_frame
@@ -735,16 +748,3 @@ class BinTab:
         count = Student.permanent_delete(student_ids)
         self.refresh_bin()
         messagebox.showinfo("Deleted", f"{count} students permanently deleted.")
-
-    def move_to_bin(self):
-        selected_items = self.tree.selection()
-        if not selected_items:
-            messagebox.showwarning("Select Students", "Select students to move to bin.")
-            return
-        student_ids = [self.tree.item(item)['values'][0] for item in selected_items]  # [0] is student_id
-        if not messagebox.askyesno("Confirm", f"Move {len(student_ids)} students to bin?"):
-            return
-        from app.db.models import Student
-        count = Student.soft_delete(student_ids)
-        self.refresh_student_list()
-        messagebox.showinfo("Moved to Bin", f"{count} students moved to bin.")
