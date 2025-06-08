@@ -334,8 +334,20 @@ from ttkbootstrap import ttk
 
 class StudentManagementTab:
     def __init__(self, parent):
-        self.selected_ids = set()
         self.setup_student_management_tab(parent)
+        
+    def move_to_bin(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Select Students", "Select students to move to bin.")
+            return
+        student_ids = [self.tree.item(item)['values'][0] for item in selected_items]  # [0] is student_id
+        if not messagebox.askyesno("Confirm", f"Move {len(student_ids)} students to bin?"):
+            return
+        from app.db.models import Student
+        count = Student.soft_delete(student_ids)
+        self.refresh_student_list()
+        messagebox.showinfo("Moved to Bin", f"{count} students moved to bin.")
 
     def setup_student_management_tab(self, parent_frame):
         self.parent_frame = parent_frame
@@ -426,13 +438,12 @@ class StudentManagementTab:
         ttk.Button(search_frame, text="Go", command=self.search_students).pack(side="left", padx=2)
         ttk.Button(search_frame, text="Show All", command=self.refresh_student_list).pack(side="left", padx=2)
 
-        # Treeview with checkbox column
-        columns = ['select', 'student_id'] + [f[0] for f in fields] + ['profile_picture_path']
+        # Treeview
+        columns = ['student_id'] + [f[0] for f in fields] + ['profile_picture_path']
         self.tree = ttk.Treeview(parent_frame, columns=columns, show='headings', height=20)
-        self.tree.heading('select', text='Select')
-        self.tree.column('select', width=60, anchor='center')
-        for key in columns[1:]:
+        for key in columns:
             self.tree.heading(key, text=key.replace('_', ' ').title())
+            # Optionally hide the student_id column
             if key == 'student_id':
                 self.tree.column(key, width=0, stretch=False)
             else:
@@ -445,14 +456,6 @@ class StudentManagementTab:
         vsb.pack(side='right', fill='y')
         hsb.pack(side='bottom', fill='x')
         self.tree.bind('<<TreeviewSelect>>', self.on_tree_select)
-        # Bind click event for checkbox toggle
-        self.tree.bind('<Button-1>', self.on_tree_click)
-
-        # Add "Select All" checkbox
-        select_all_var = tk.BooleanVar()
-        self.select_all_var = select_all_var
-        select_all_cb = ttk.Checkbutton(parent_frame, text="Select All", variable=select_all_var, command=self.toggle_select_all)
-        select_all_cb.pack(anchor='ne', padx=10, pady=2)
 
         self.refresh_student_list()
 
@@ -599,7 +602,7 @@ class StudentManagementTab:
         for row in self.tree.get_children():
             self.tree.delete(row)
         for student in Student.get_all():
-            values = ['☐', student.get('student_id')] + [student.get(f) for f in self.tree['columns'][2:]]
+            values = [student.get(f) for f in self.tree['columns']]
             self.tree.insert('', 'end', values=values)
 
     def on_tree_select(self, event):
@@ -618,49 +621,82 @@ class StudentManagementTab:
             self.profile_pic_path.set(pic_path if pic_path else "")
             self.profile_pic_label.config(text=os.path.basename(pic_path) if pic_path else "No file selected")
 
-    def on_tree_click(self, event):
-        region = self.tree.identify('region', event.x, event.y)
-        if region == 'cell':
-            col = self.tree.identify_column(event.x)
-            if col == '#1':  # 'select' column
-                row_id = self.tree.identify_row(event.y)
-                if row_id:
-                    values = list(self.tree.item(row_id, 'values'))
-                    student_id = values[1]
-                    if student_id in self.selected_ids:
-                        values[0] = '☐'
-                        self.selected_ids.remove(student_id)
-                    else:
-                        values[0] = '☑'
-                        self.selected_ids.add(student_id)
-                    self.tree.item(row_id, values=values)
-        # Allow normal selection for other columns
-        return
-
-    def toggle_select_all(self):
-        select = self.select_all_var.get()
-        for row_id in self.tree.get_children():
-            values = list(self.tree.item(row_id, 'values'))
-            student_id = values[1]
-            if select:
-                values[0] = '☑'
-                self.selected_ids.add(student_id)
-            else:
-                values[0] = '☐'
-                self.selected_ids.discard(student_id)
-            self.tree.item(row_id, values=values)
-
-    def move_to_bin(self):
-        if not self.selected_ids:
-            messagebox.showwarning("Select Students", "Select students to move to bin.")
+    def search_students(self):
+        query = self.search_var.get().strip().lower()
+        if not query:
+            self.refresh_student_list()
             return
-        student_ids = list(self.selected_ids)
-        if not messagebox.askyesno("Confirm", f"Move {len(student_ids)} students to bin?"):
-            return
-        from app.db.models import Student
-        count = Student.soft_delete(student_ids)
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+        for student in Student.get_all():
+            if any(query in str(value).lower() for value in student.values()):
+                values = [student.get(f) for f in self.tree['columns']]
+                self.tree.insert('', 'end', values=values)
+
+    def generate_sample_students(self):
+        first_names = ["Amit", "Priya", "Rahul", "Sneha", "Vikas", "Anjali", "Rohan", "Pooja", "Suresh", "Neha"]
+        last_names = ["Sharma", "Patel", "Singh", "Gupta", "Mehta", "Jain", "Kumar", "Verma", "Reddy", "Chopra"]
+        blood_groups = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
+        genders = ["Male", "Female", "Other"]
+        courses = [1, 2, 3, 4, 5]
+        years = [1, 2, 3, 4, 5]
+
+        used_roll_numbers = set()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT roll_number FROM students")
+        existing_roll_numbers = set(row[0] for row in cursor.fetchall())
+        for i in range(100):
+            while True:
+                roll_number = f"R{random.randint(10000,99999)}"
+                if roll_number not in used_roll_numbers and roll_number not in existing_roll_numbers:
+                    used_roll_numbers.add(roll_number)
+                    break
+            fname = random.choice(first_names)
+            lname = random.choice(last_names)
+            name = f"{fname} {lname}"
+            contact_number = f"9{random.randint(100000000,999999999)}"
+            email = f"{fname.lower()}.{lname.lower()}{random.randint(1,99)}@example.com"
+            address = f"{random.randint(1,200)}, Main Street, City"
+            aadhaar_no = f"{random.randint(100000000000,999999999999)}"
+            dob = (datetime.now() - timedelta(days=random.randint(6000, 9000))).strftime("%Y-%m-%d")
+            gender = random.choice(genders)
+            tenth_percent = round(random.uniform(60, 99), 2)
+            twelfth_percent = round(random.uniform(60, 99), 2)
+            blood_group = random.choice(blood_groups)
+            mother_name = f"{random.choice(first_names)} {lname}"
+            enrollment_date = (datetime.now() - timedelta(days=random.randint(0, 1000))).strftime("%Y-%m-%d")
+            course_id = random.choice(courses)
+            academic_year_id = random.choice(years)
+            profile_picture_path = None
+
+            data = {
+                "roll_number": roll_number,
+                "name": name,
+                "contact_number": contact_number,
+                "email": email,
+                "address": address,
+                "aadhaar_no": aadhaar_no,
+                "date_of_birth": dob,
+                "gender": gender,
+                "tenth_percent": tenth_percent,
+                "twelfth_percent": twelfth_percent,
+                "blood_group": blood_group,
+                "mother_name": mother_name,
+                "enrollment_date": enrollment_date,
+                "course_id": course_id,
+                "academic_year_id": academic_year_id,
+                "profile_picture_path": profile_picture_path,
+                "enrollment_status": 1
+            }
+            try:
+                Student.create(data)
+            except Exception as e:
+                print(f"Error adding sample student: {e}")
+
+        conn.close()
         self.refresh_student_list()
-        messagebox.showinfo("Moved to Bin", f"{count} students moved to bin.")
+        messagebox.showinfo("Success", "100 random student entries added.")
 
 class BinTab:
     def __init__(self, parent):
