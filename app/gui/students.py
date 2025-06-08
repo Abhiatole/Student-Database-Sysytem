@@ -438,13 +438,12 @@ class StudentManagementTab:
         ttk.Button(search_frame, text="Go", command=self.search_students).pack(side="left", padx=2)
         ttk.Button(search_frame, text="Show All", command=self.refresh_student_list).pack(side="left", padx=2)
 
-        # Treeview with checkbox column
-        columns = ['select', 'student_id'] + [f[0] for f in fields] + ['profile_picture_path']
+        # Treeview
+        columns = ['student_id'] + [f[0] for f in fields] + ['profile_picture_path']
         self.tree = ttk.Treeview(parent_frame, columns=columns, show='headings', height=20)
-        self.tree.heading('select', text='Select')
-        self.tree.column('select', width=60, anchor='center')
-        for key in columns[1:]:
+        for key in columns:
             self.tree.heading(key, text=key.replace('_', ' ').title())
+            # Optionally hide the student_id column
             if key == 'student_id':
                 self.tree.column(key, width=0, stretch=False)
             else:
@@ -457,68 +456,8 @@ class StudentManagementTab:
         vsb.pack(side='right', fill='y')
         hsb.pack(side='bottom', fill='x')
         self.tree.bind('<<TreeviewSelect>>', self.on_tree_select)
-        # Bind click event for checkbox toggle
-        self.tree.bind('<Button-1>', self.on_tree_click)
-
-        # Add "Select All" checkbox
-        select_all_var = tk.BooleanVar()
-        self.select_all_var = select_all_var
-        select_all_cb = ttk.Checkbutton(parent_frame, text="Select All", variable=select_all_var, command=self.toggle_select_all)
-        select_all_cb.pack(anchor='ne', padx=10, pady=2)
 
         self.refresh_student_list()
-
-    def refresh_student_list(self):
-        for row in self.tree.get_children():
-            self.tree.delete(row)
-        self.selected_ids.clear()
-        for student in Student.get_all():
-            values = ['☐', student.get('student_id')] + [student.get(f) for f in self.tree['columns'][2:]]
-            self.tree.insert('', 'end', values=values)
-
-    def on_tree_click(self, event):
-        region = self.tree.identify('region', event.x, event.y)
-        if region == 'cell':
-            col = self.tree.identify_column(event.x)
-            if col == '#1':  # 'select' column
-                row_id = self.tree.identify_row(event.y)
-                if row_id:
-                    values = list(self.tree.item(row_id, 'values'))
-                    student_id = values[1]
-                    if student_id in self.selected_ids:
-                        values[0] = '☐'
-                        self.selected_ids.remove(student_id)
-                    else:
-                        values[0] = '☑'
-                        self.selected_ids.add(student_id)
-                    self.tree.item(row_id, values=values)
-        # Allow normal selection for other columns
-        return
-
-    def toggle_select_all(self):
-        select = self.select_all_var.get()
-        for row_id in self.tree.get_children():
-            values = list(self.tree.item(row_id, 'values'))
-            student_id = values[1]
-            if select:
-                values[0] = '☑'
-                self.selected_ids.add(student_id)
-            else:
-                values[0] = '☐'
-                self.selected_ids.discard(student_id)
-            self.tree.item(row_id, values=values)
-
-    def move_to_bin(self):
-        if not self.selected_ids:
-            messagebox.showwarning("Select Students", "Select students to move to bin.")
-            return
-        student_ids = list(self.selected_ids)
-        if not messagebox.askyesno("Confirm", f"Move {len(student_ids)} students to bin?"):
-            return
-        from app.db.models import Student
-        count = Student.soft_delete(student_ids)
-        self.refresh_student_list()
-        messagebox.showinfo("Moved to Bin", f"{count} students moved to bin.")
 
     def upload_profile_picture(self):
         file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.gif")])
