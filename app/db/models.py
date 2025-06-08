@@ -73,3 +73,19 @@ class Student:
             cursor.executemany('UPDATE students SET deleted=1 WHERE student_id=?', [(sid,) for sid in student_ids])
             conn.commit()
             return cursor.rowcount
+        
+    @staticmethod
+    def permanent_delete(student_ids):
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany('DELETE FROM students WHERE student_id=?', [(sid,) for sid in student_ids])
+            conn.commit()
+            return cursor.rowcount
+
+    @staticmethod
+    def restore(student_ids):
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany('UPDATE students SET deleted=0 WHERE student_id=?', [(sid,) for sid in student_ids])
+            conn.commit()
+            return cursor.rowcount
