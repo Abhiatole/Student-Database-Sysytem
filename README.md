@@ -1,121 +1,133 @@
 # Student Database Management System (DBMS)
 
-## Overview
-A robust, scalable, and industry-grade Student Database Management System for educational institutions. This system provides a modern dashboard, advanced reporting, omni-channel communication, and secure student management workflows. Designed for extensibility, maintainability, and high performance.
+A robust, scalable, and professional-grade Student Database Management System designed for educational institutions. This application delivers a modern, industry-standard solution for managing student records, analytics, reporting, and communication, with a focus on security, usability, and extensibility.
 
 ---
 
-## Features
-- **Professional Dashboard**: Live stats, charts, and analytics.
-- **Advanced Reporting**: Export to PDF/CSV, delivery logging, and email sharing.
-- **Secure Authentication**: Role-based access, password hashing, and update workflows.
-- **Student Management**: CRUD operations, ID card generation, payment receipts.
-- **Visual Analytics**: Matplotlib-powered charts (bar, pie, etc.).
-- **Integrated Communication**: Feedback, queries, and announcements hub.
-- **Modern UI/UX**: Built with ttkbootstrap and custom title bar.
-- **Scalable Architecture**: Modular codebase, ready for API/microservices.
-- **Testing**: Unit tests for all critical modules.
+## Key Features
+
+- **Professional Dashboard**: Real-time statistics and analytics.
+- **Advanced Reporting**: Export to PDF/CSV, email sharing.
+- **Secure Authentication**: Role-based access, password hashing.
+- **Student Management**: CRUD operations, ID cards, payment receipts.
+- **Visual Analytics**: Interactive charts and graphs.
+- **Integrated Communication**: Feedback, queries, announcements.
+- **Modern UI/UX**: Built with Tkinter/ttkbootstrap.
+- **Scalable & Modular**: Clean, maintainable, and extensible codebase.
+- **Comprehensive Testing**: Unit tests for all critical modules.
 
 ---
 
-## File Structure
+## Directory Structure
+
 ```
-student_dbms/
-│
-├── app/
-│   ├── __init__.py
-│   ├── config.py
-│   ├── main.py
-│   ├── db/
-│   │   ├── __init__.py
-│   │   ├── models.py
-│   │   ├── database.py
-│   │   └── seed.py
-│   ├── gui/
-│   │   ├── __init__.py
-│   │   ├── login.py
-│   │   ├── register.py
-│   │   ├── dashboard.py
-│   │   ├── students.py
-│   │   ├── marks.py
-│   │   ├── reports.py
-│   │   ├── analytics.py
-│   │   ├── id_card.py
-│   │   ├── payments.py
-│   │   └── communications.py
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   ├── email_utils.py
-│   │   ├── image_utils.py
-│   │   ├── security.py
-│   │   └── logger.py
-│   └── resources/
-│       ├── logo.png
-│       ├── college_banner.png
-│       └── id_card_bg.png
-│
-├── tests/
-│   ├── __init__.py
-│   ├── test_db.py
-│   ├── test_gui.py
-│   └── test_utils.py
-│
-├── requirements.txt
-├── README.md
-└── setup.py
+app/
+  config.py
+  main.py
+  db/
+  gui/
+  resources/
+  utils/
+tests/
+requirements.txt
+setup.py
+student_management_system.db
+images/
+  application/
+  Charts/
 ```
 
 ---
 
-## Setup & Installation
+## System Flow Chart
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/your-org/student_dbms.git
-   cd student_dbms
-   ```
-2. **Create a virtual environment:**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. **Run the application:**
-   ```bash
-   python -m app.main
-   ```
+_Include your flow chart here if available:_
+
+```
+![System Flow Chart](images/Charts/1.png)
+```
 
 ---
 
-## Configuration
-- All sensitive credentials (e.g., email, DB) are managed via environment variables or `app/config.py`.
-- Update `app/resources/` with your institution's branding assets.
+## Application Screenshots
+
+Below are screenshots showcasing the application's interface and features:
+
+### Application UI
+
+| 1 | 2 | 3 | 4 |
+|---|---|---|---|
+| ![App 1](images/application/1.png) | ![App 2](images/application/2.png) | ![App 3](images/application/3.png) | ![App 4](images/application/4.png) |
+
+| 5 | 6 | 7 | 8 |
+|---|---|---|---|
+| ![App 5](images/application/5.png) | ![App 6](images/application/6.png) | ![App 7](images/application/7.png) | ![App 8](images/application/8.png) |
+
+| 9 | 10 | 11 | 12 |
+|---|----|----|----|
+| ![App 9](images/application/9.png) | ![App 10](images/application/10.png) | ![App 11](images/application/11.png) | ![App 12](images/application/12.png) |
 
 ---
 
-## Testing
-Run all tests with:
-```bash
+## Analytics & Charts
+
+The following charts illustrate the system's analytics and reporting capabilities:
+
+| 1 | 2 | 3 | 4 |
+|---|---|---|---|
+| ![Chart 1](images/Charts/1.png) | ![Chart 2](images/Charts/2.png) | ![Chart 3](images/Charts/3.png) | ![Chart 4](images/Charts/4.png) |
+
+| 5 | 6 | 7 | 8 |
+|---|---|---|---|
+| ![Chart 5](images/Charts/5.png) | ![Chart 6](images/Charts/6.png) | ![Chart 7](images/Charts/7.png) | ![Chart 8](images/Charts/8.png) |
+
+| 9 | 10 | 11 | 12 | 13 |
+|---|----|----|----|----|
+| ![Chart 9](images/Charts/9.png) | ![Chart 10](images/Charts/10.png) | ![Chart 11](images/Charts/11.png) | ![Chart 12](images/Charts/12.png) | ![Chart 13](images/Charts/13.png) |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.12+
+- Install dependencies from [requirements.txt](requirements.txt)
+
+### Installation
+
+```sh
+pip install -r requirements.txt
+python app/main.py
+```
+
+### Running Tests
+
+```sh
 pytest tests/
 ```
 
 ---
 
-## Contributing
-- Follow PEP8 and industry best practices.
-- All new features must include unit tests.
-- Use pull requests for all changes.
+## Deployment
+
+- Desktop application (Tkinter/ttkbootstrap)
+- Local SQLite database (`student_management_system.db`)
+- All dependencies managed via `requirements.txt`
 
 ---
 
 ## License
-[MIT License](LICENSE)
+
+MIT License
 
 ---
 
-## Authors
-- Rushikesh Atole and Team
-- [Your Contributors Here]
+## Acknowledgements
+
+- [Tkinter](https://docs.python.org/3/library/tkinter.html)
+- [ttkbootstrap](https://ttkbootstrap.readthedocs.io/)
+- [Matplotlib](https://matplotlib.org/)
+- [ReportLab](https://www.reportlab.com/)
+
+---
