@@ -1,4 +1,4 @@
-# Student Database Management System (DBMS)...............
+# Student Database Management System (DBMS)
 
 ## Overview
 A robust, scalable, and industry-grade Student Database Management System for educational institutions. This system provides a modern dashboard, advanced reporting, omni-channel communication, and secure student management workflows. Designed for extensibility, maintainability, and high performance.
