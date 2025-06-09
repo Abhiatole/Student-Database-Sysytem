@@ -26,6 +26,7 @@ class StudentManagementFrame(ttk.Frame):
         self.pack(fill='both', expand=True)
         self.create_widgets()
         self.refresh_student_list()
+        self.checked_items = set()
 
     def create_widgets(self):
         # Form fields
@@ -90,6 +91,7 @@ class StudentManagementFrame(ttk.Frame):
         vsb.pack(side='right', fill='y')
         hsb.pack(side='bottom', fill='x')
         self.tree.bind('<<TreeviewSelect>>', self.on_tree_select)
+        self.tree.bind('<Button-1>', self.on_tree_checkbox_click)
 
     def upload_profile_picture(self):
         file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.gif")])
@@ -131,8 +133,9 @@ class StudentManagementFrame(ttk.Frame):
             self.clear_form()
             # Refresh dashboard
             from app.main import MainApplication
-            app = self.winfo_toplevel().main_app_instance if hasattr(self.winfo_toplevel(), 'main_app_instance') else None
-            if app and app.dashboard_tab_instance:
+            toplevel = self.parent_frame.winfo_toplevel()
+            app = getattr(toplevel, 'main_app_instance', None)
+            if app and getattr(app, 'dashboard_tab_instance', None):
                 app.dashboard_tab_instance.refresh_stats()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to add student: {e}")
@@ -161,65 +164,48 @@ class StudentManagementFrame(ttk.Frame):
             return
         selected = self.tree.selection()
         if not selected:
-            messagebox.showwarning("Select Student", "Select a student to delete.")
+            messagebox.showwarning("Select Student(s)", "Select one or more students to delete.")
             return
-        roll_number = self.tree.item(selected[0])['values'][0]
-        # Lookup student_id by roll_number
-        from app.db.database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT student_id FROM students WHERE roll_number=?", (roll_number,))
-        row = cursor.fetchone()
-        conn.close()
-        if not row:
-            messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
-            return
-        student_id = row[0]
-        if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this student?"):
+        student_ids = [self.tree.item(item)['values'][1] for item in selected]  # [1] is student_id
+        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to move {len(student_ids)} student(s) to bin?"):
             try:
-                deleted = Student.delete(student_id)
-                if deleted:
+                from app.db.models import Student
+                count = Student.soft_delete(student_ids)
+                if count:
                     self.refresh_student_list()
-                    messagebox.showinfo("Success", "Student deleted successfully.")
+                    messagebox.showinfo("Moved to Bin", f"{count} student(s) moved to bin successfully.")
                     self.clear_form()
                     # Refresh dashboard
                     from app.main import MainApplication
-                    app = self.winfo_toplevel().main_app_instance if hasattr(self.winfo_toplevel(), 'main_app_instance') else None
-                    if app and app.dashboard_tab_instance:
+                    toplevel = self.parent_frame.winfo_toplevel()
+                    app = getattr(toplevel, 'main_app_instance', None)
+                    if app and getattr(app, 'dashboard_tab_instance', None):
                         app.dashboard_tab_instance.refresh_stats()
                 else:
-                    messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
+                    messagebox.showwarning("Delete Failed", "Student(s) not found or could not be moved to bin.")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to delete student: {e}")
+                messagebox.showerror("Error", f"Failed to move student(s) to bin: {e}")
 
-    def batch_delete_students(self):
-        if not hasattr(self, 'tree'):
-            messagebox.showerror("Error", "Student list not initialized.")
-            return
+    def batch_edit_students(self):
         selected_items = self.tree.selection()
         if not selected_items:
-            messagebox.showwarning("Select Students", "Select students to delete.")
+            messagebox.showwarning("Select Student", "Select a student to edit.")
             return
-        if not messagebox.askyesno("Confirm Batch Delete", f"Are you sure you want to delete {len(selected_items)} students?"):
+        if len(selected_items) > 1:
+            messagebox.showwarning("Batch Edit", "Please select only one student to edit at a time.")
             return
-        deleted_count = 0
-        for item in selected_items:
-            roll_number = self.tree.item(item)['values'][1]  # [1] because [0] is student_id
-            from app.db.database import get_db_connection
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT student_id FROM students WHERE roll_number=?", (roll_number,))
-            row = cursor.fetchone()
-            conn.close()
-            if row:
-                student_id = row[0]
-                try:
-                    if Student.delete(student_id):
-                        deleted_count += 1
-                except Exception as e:
-                    print(f"Error deleting student: {e}")
-        self.refresh_student_list()
-        messagebox.showinfo("Batch Delete", f"Deleted {deleted_count} students.")
+        # Load the selected student's data into the form for editing
+        values = self.tree.item(selected_items[0])['values']
+        for idx, key in enumerate(self.tree['columns']):
+            if key in self.entries:
+                self.entries[key].delete(0, tk.END)
+                self.entries[key].insert(0, values[idx])
+        # Profile picture
+        if 'profile_picture_path' in self.tree['columns']:
+            idx = self.tree['columns'].index('profile_picture_path')
+            pic_path = values[idx]
+            self.profile_pic_path.set(pic_path if pic_path else "")
+            self.profile_pic_label.config(text=os.path.basename(pic_path) if pic_path else "No file selected")
 
     def clear_form(self):
         for entry in self.entries.values():
@@ -234,7 +220,9 @@ class StudentManagementFrame(ttk.Frame):
         for row in self.tree.get_children():
             self.tree.delete(row)
         for student in Student.get_all():
-            values = [student.get(f) for f in self.tree['columns']]
+            student_id = student.get('student_id')
+            checked = '☑' if student_id in self.checked_items else '☐'
+            values = [checked] + [student.get(f) for f in self.tree['columns'] if f != 'selected']
             self.tree.insert('', 'end', values=values)
 
     def on_tree_select(self, event):
@@ -252,6 +240,29 @@ class StudentManagementFrame(ttk.Frame):
             pic_path = values[idx]
             self.profile_pic_path.set(pic_path if pic_path else "")
             self.profile_pic_label.config(text=os.path.basename(pic_path) if pic_path else "No file selected")
+
+    def on_tree_checkbox_click(self, event):
+        # Ignore clicks on the header
+        region = self.tree.identify_region(event.x, event.y)
+        if region == "heading":
+            return
+
+        # Get the item clicked
+        item = self.tree.identify_row(event.y)
+        if not item:
+            return
+
+        # Toggle the checkbox
+        current_value = self.tree.item(item, 'values')[0]
+        new_value = '☐' if current_value == '☑' else '☑'
+        self.tree.item(item, values=[new_value] + list(self.tree.item(item, 'values')[1:]))
+
+        # Update the checked_items set
+        student_id = self.tree.item(item, 'values')[1]
+        if new_value == '☑':
+            self.checked_items.add(student_id)
+        else:
+            self.checked_items.discard(student_id)
 
     def search_students(self):
         query = self.search_var.get().strip().lower()
@@ -334,6 +345,8 @@ from ttkbootstrap import ttk
 
 class StudentManagementTab:
     def __init__(self, parent):
+        self.checked_items = set()  # <-- Add this line
+        self.parent_frame = parent
         self.setup_student_management_tab(parent)
         
     def move_to_bin(self):
@@ -418,12 +431,7 @@ class StudentManagementTab:
         ttk.Button(btn_frame, text="Update", command=self.update_student, bootstyle="info").pack(side='left', padx=2)
         ttk.Button(btn_frame, text="Delete", command=self.delete_student, bootstyle="danger").pack(side='left', padx=2)
         ttk.Button(btn_frame, text="Clear", command=self.clear_form, bootstyle="secondary").pack(side='left', padx=2)
-        # Add "Move to Bin" button
-        ttk.Button(btn_frame, text="Move to Bin", command=self.move_to_bin, bootstyle="danger").pack(side='left', padx=2)
-        # Add tooltip for "Move to Bin" button
-        ToolTip(btn_frame.winfo_children()[-1], text="Move selected students to bin (soft delete)")
 
-        # Add "Generate Sample Data" button
         sample_btn = ttk.Button(btn_frame, text="Generate 100 Sample Students", command=self.generate_sample_students, bootstyle="warning")
         sample_btn.pack(side='left', padx=2)
         ToolTip(sample_btn, text="Add 100 random student entries for demo/testing")
@@ -439,13 +447,15 @@ class StudentManagementTab:
         ttk.Button(search_frame, text="Show All", command=self.refresh_student_list).pack(side="left", padx=2)
 
         # Treeview
-        columns = ['student_id'] + [f[0] for f in fields] + ['profile_picture_path']
+        columns = ['selected', 'student_id'] + [f[0] for f in fields] + ['profile_picture_path']
         self.tree = ttk.Treeview(parent_frame, columns=columns, show='headings', height=20)
         for key in columns:
             self.tree.heading(key, text=key.replace('_', ' ').title())
             # Optionally hide the student_id column
             if key == 'student_id':
                 self.tree.column(key, width=0, stretch=False)
+            elif key == 'selected':
+                self.tree.column(key, width=40, anchor='center')
             else:
                 self.tree.column(key, width=100)
         # Scrollbars
@@ -499,8 +509,9 @@ class StudentManagementTab:
             self.clear_form()
             # Refresh dashboard
             from app.main import MainApplication
-            app = self.winfo_toplevel().main_app_instance if hasattr(self.winfo_toplevel(), 'main_app_instance') else None
-            if app and app.dashboard_tab_instance:
+            toplevel = self.parent_frame.winfo_toplevel()
+            app = getattr(toplevel, 'main_app_instance', None)
+            if app and getattr(app, 'dashboard_tab_instance', None):
                 app.dashboard_tab_instance.refresh_stats()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to add student: {e}")
@@ -529,65 +540,48 @@ class StudentManagementTab:
             return
         selected = self.tree.selection()
         if not selected:
-            messagebox.showwarning("Select Student", "Select a student to delete.")
+            messagebox.showwarning("Select Student(s)", "Select one or more students to delete.")
             return
-        roll_number = self.tree.item(selected[0])['values'][0]
-        # Lookup student_id by roll_number
-        from app.db.database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT student_id FROM students WHERE roll_number=?", (roll_number,))
-        row = cursor.fetchone()
-        conn.close()
-        if not row:
-            messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
-            return
-        student_id = row[0]
-        if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this student?"):
+        student_ids = [self.tree.item(item)['values'][1] for item in selected]  # [1] is student_id
+        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to move {len(student_ids)} student(s) to bin?"):
             try:
-                deleted = Student.delete(student_id)
-                if deleted:
+                from app.db.models import Student
+                count = Student.soft_delete(student_ids)
+                if count:
                     self.refresh_student_list()
-                    messagebox.showinfo("Success", "Student deleted successfully.")
+                    messagebox.showinfo("Moved to Bin", f"{count} student(s) moved to bin successfully.")
                     self.clear_form()
                     # Refresh dashboard
                     from app.main import MainApplication
-                    app = self.winfo_toplevel().main_app_instance if hasattr(self.winfo_toplevel(), 'main_app_instance') else None
-                    if app and app.dashboard_tab_instance:
+                    toplevel = self.parent_frame.winfo_toplevel()
+                    app = getattr(toplevel, 'main_app_instance', None)
+                    if app and getattr(app, 'dashboard_tab_instance', None):
                         app.dashboard_tab_instance.refresh_stats()
                 else:
-                    messagebox.showwarning("Delete Failed", "Student not found or could not be deleted.")
+                    messagebox.showwarning("Delete Failed", "Student(s) not found or could not be moved to bin.")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to delete student: {e}")
+                messagebox.showerror("Error", f"Failed to move student(s) to bin: {e}")
 
-    def batch_delete_students(self):
-        if not hasattr(self, 'tree'):
-            messagebox.showerror("Error", "Student list not initialized.")
-            return
+    def batch_edit_students(self):
         selected_items = self.tree.selection()
         if not selected_items:
-            messagebox.showwarning("Select Students", "Select students to delete.")
+            messagebox.showwarning("Select Student", "Select a student to edit.")
             return
-        if not messagebox.askyesno("Confirm Batch Delete", f"Are you sure you want to delete {len(selected_items)} students?"):
+        if len(selected_items) > 1:
+            messagebox.showwarning("Batch Edit", "Please select only one student to edit at a time.")
             return
-        deleted_count = 0
-        for item in selected_items:
-            roll_number = self.tree.item(item)['values'][1]  # [1] because [0] is student_id
-            from app.db.database import get_db_connection
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT student_id FROM students WHERE roll_number=?", (roll_number,))
-            row = cursor.fetchone()
-            conn.close()
-            if row:
-                student_id = row[0]
-                try:
-                    if Student.delete(student_id):
-                        deleted_count += 1
-                except Exception as e:
-                    print(f"Error deleting student: {e}")
-        self.refresh_student_list()
-        messagebox.showinfo("Batch Delete", f"Deleted {deleted_count} students.")
+        # Load the selected student's data into the form for editing
+        values = self.tree.item(selected_items[0])['values']
+        for idx, key in enumerate(self.tree['columns']):
+            if key in self.entries:
+                self.entries[key].delete(0, tk.END)
+                self.entries[key].insert(0, values[idx])
+        # Profile picture
+        if 'profile_picture_path' in self.tree['columns']:
+            idx = self.tree['columns'].index('profile_picture_path')
+            pic_path = values[idx]
+            self.profile_pic_path.set(pic_path if pic_path else "")
+            self.profile_pic_label.config(text=os.path.basename(pic_path) if pic_path else "No file selected")
 
     def clear_form(self):
         for entry in self.entries.values():
@@ -602,7 +596,9 @@ class StudentManagementTab:
         for row in self.tree.get_children():
             self.tree.delete(row)
         for student in Student.get_all():
-            values = [student.get(f) for f in self.tree['columns']]
+            student_id = student.get('student_id')
+            checked = '☑' if student_id in self.checked_items else '☐'
+            values = [checked] + [student.get(f) for f in self.tree['columns'] if f != 'selected']
             self.tree.insert('', 'end', values=values)
 
     def on_tree_select(self, event):
@@ -620,6 +616,29 @@ class StudentManagementTab:
             pic_path = values[idx]
             self.profile_pic_path.set(pic_path if pic_path else "")
             self.profile_pic_label.config(text=os.path.basename(pic_path) if pic_path else "No file selected")
+
+    def on_tree_checkbox_click(self, event):
+        # Ignore clicks on the header
+        region = self.tree.identify_region(event.x, event.y)
+        if region == "heading":
+            return
+
+        # Get the item clicked
+        item = self.tree.identify_row(event.y)
+        if not item:
+            return
+
+        # Toggle the checkbox
+        current_value = self.tree.item(item, 'values')[0]
+        new_value = '☐' if current_value == '☑' else '☑'
+        self.tree.item(item, values=[new_value] + list(self.tree.item(item, 'values')[1:]))
+
+        # Update the checked_items set
+        student_id = self.tree.item(item, 'values')[1]
+        if new_value == '☑':
+            self.checked_items.add(student_id)
+        else:
+            self.checked_items.discard(student_id)
 
     def search_students(self):
         query = self.search_var.get().strip().lower()
@@ -715,6 +734,9 @@ class BinTab:
         btn_frame.pack(pady=10)
         ttk.Button(btn_frame, text="Restore Selected", command=self.restore_selected, bootstyle="success").pack(side='left', padx=2)
         ttk.Button(btn_frame, text="Delete Permanently", command=self.permanent_delete_selected, bootstyle="danger").pack(side='left', padx=2)
+        # Add Restore All and Delete All buttons
+        ttk.Button(btn_frame, text="Restore All", command=self.restore_all, bootstyle="success").pack(side='left', padx=2)
+        ttk.Button(btn_frame, text="Delete All Permanently", command=self.permanent_delete_all, bootstyle="danger").pack(side='left', padx=2)
         self.refresh_bin()
 
     def refresh_bin(self):
@@ -745,6 +767,30 @@ class BinTab:
             return
         student_ids = [self.tree.item(item)['values'][0] for item in selected_items]
         from app.db.models import Student
+        count = Student.permanent_delete(student_ids)
+        self.refresh_bin()
+        messagebox.showinfo("Deleted", f"{count} students permanently deleted.")
+
+    def restore_all(self):
+        from app.db.models import Student
+        all_students = Student.get_bin()
+        if not all_students:
+            messagebox.showinfo("No Students", "No students to restore.")
+            return
+        student_ids = [student.get('student_id') for student in all_students]
+        count = Student.restore(student_ids)
+        self.refresh_bin()
+        messagebox.showinfo("Restored", f"{count} students restored.")
+
+    def permanent_delete_all(self):
+        from app.db.models import Student
+        all_students = Student.get_bin()
+        if not all_students:
+            messagebox.showinfo("No Students", "No students to delete.")
+            return
+        if not messagebox.askyesno("Confirm", "This will permanently delete ALL students in the bin. Continue?"):
+            return
+        student_ids = [student.get('student_id') for student in all_students]
         count = Student.permanent_delete(student_ids)
         self.refresh_bin()
         messagebox.showinfo("Deleted", f"{count} students permanently deleted.")
