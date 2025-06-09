@@ -794,3 +794,10 @@ class BinTab:
         count = Student.permanent_delete(student_ids)
         self.refresh_bin()
         messagebox.showinfo("Deleted", f"{count} students permanently deleted.")
+
+    # Add this helper to avoid repeating code
+    def refresh_dashboard(self):
+        toplevel = self.parent_frame.winfo_toplevel()
+        app = getattr(toplevel, 'main_app_instance', None)
+        if app and getattr(app, 'dashboard_tab_instance', None):
+            app.dashboard_tab_instance.refresh_stats()
