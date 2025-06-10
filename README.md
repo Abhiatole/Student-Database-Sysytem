@@ -41,11 +41,10 @@ images/
 
 ## System Flow Chart
 
-_Include your flow chart here if available:_
+Below is the system flow chart illustrating the application's data flow and logic:
 
-```
-![System Flow Chart](images/Charts/1.png)
-```
+![System Flow Chart](images/Charts/3.png)
+
 
 ---
 
