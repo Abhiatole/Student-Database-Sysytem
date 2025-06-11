@@ -9,14 +9,14 @@ import sqlite3
 def setup_test_profile_pictures():
     """Associate existing profile pictures with students"""
     print("🔧 Setting up test profile pictures for students...")
-    
-    # Connect to database
-    db_path = os.path.join(os.path.dirname(__file__), 'student_management_system.db')
+      # Connect to database
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    db_path = os.path.join(project_root, 'data', 'student_management_system.db')
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     # Get profile pictures directory
-    profile_pics_dir = os.path.join(os.path.dirname(__file__), 'profile_pictures')
+    profile_pics_dir = os.path.join(project_root, 'src', 'assets', 'profile_pictures')
     
     if not os.path.exists(profile_pics_dir):
         print("❌ Profile pictures directory not found")

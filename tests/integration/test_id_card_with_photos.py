@@ -14,9 +14,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 def test_profile_picture_paths():
     """Test if profile pictures exist and are accessible"""
     print("=== Testing Profile Picture Access ===\n")
-    
-    # Connect to database
-    db_path = os.path.join(os.path.dirname(__file__), 'student_management_system.db')
+      # Connect to database
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    db_path = os.path.join(project_root, 'data', 'student_management_system.db')
     if not os.path.exists(db_path):
         print(f"❌ Database not found at: {db_path}")
         return False
@@ -68,7 +68,8 @@ def test_profile_pictures_directory():
     """Test profile pictures directory"""
     print("\n=== Testing Profile Pictures Directory ===\n")
     
-    profile_pics_dir = os.path.join(os.path.dirname(__file__), 'profile_pictures')
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    profile_pics_dir = os.path.join(project_root, 'src', 'assets', 'profile_pictures')
     
     if not os.path.exists(profile_pics_dir):
         print(f"❌ Profile pictures directory not found: {profile_pics_dir}")

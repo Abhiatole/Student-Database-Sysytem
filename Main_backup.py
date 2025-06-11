@@ -2182,9 +2182,8 @@ Status: {'Active' if student['enrollment_status'] == 1 else 'Inactive'}"""
         # Photo section
         photo_x1, photo_y1, photo_x2, photo_y2 = 20, 60, 100, 140
         self.id_card_canvas.create_rectangle(photo_x1, photo_y1, photo_x2, photo_y2, outline="black", width=2, fill="white")
-        
-        # Try to load and display profile picture
-        if student.get('profile_picture_path') and os.path.exists(student['profile_picture_path']):
+          # Try to load and display profile picture
+        if student['profile_picture_path'] and os.path.exists(student['profile_picture_path']):
             try:
                 # Load and resize image for preview
                 img = Image.open(student['profile_picture_path'])
@@ -2225,8 +2224,7 @@ Status: {'Active' if student['enrollment_status'] == 1 else 'Inactive'}"""
         self.id_card_canvas.create_text(200, 160, text="Valid for Academic Session", fill="black", font=("Arial", 8))
         self.id_card_canvas.create_text(200, 175, text=f"Issued: {datetime.now().strftime('%Y-%m-%d')}", 
                                       fill="black", font=("Arial", 8))
-        
-        # College signature area
+          # College signature area
         self.id_card_canvas.create_text(200, 205, text="Authorized Signature", fill="black", font=("Arial", 8))
         self.id_card_canvas.create_line(150, 220, 250, 220, fill="black")
 
@@ -2236,7 +2234,8 @@ Status: {'Active' if student['enrollment_status'] == 1 else 'Inactive'}"""
             messagebox.showwarning("No Student", "Please load a student first.")
             return
 
-        try:            # Create a higher resolution image for printing
+        try:
+            # Create a higher resolution image for printing
             img_width, img_height = 800, 500  # Doubled resolution
             img = Image.new('RGB', (img_width, img_height), 'lightblue')
             draw = ImageDraw.Draw(img)
@@ -2266,10 +2265,9 @@ Status: {'Active' if student['enrollment_status'] == 1 else 'Inactive'}"""
             
             # Photo area
             draw.rectangle([40, 120, 200, 280], outline='black', width=4, fill='white')
-            
-            # Try to load and paste actual profile picture
+              # Try to load and paste actual profile picture
             student = self.current_id_student
-            if student.get('profile_picture_path') and os.path.exists(student['profile_picture_path']):
+            if student['profile_picture_path'] and os.path.exists(student['profile_picture_path']):
                 try:
                     # Load and resize profile picture
                     profile_img = Image.open(student['profile_picture_path'])
@@ -2323,8 +2321,7 @@ Status: {'Active' if student['enrollment_status'] == 1 else 'Inactive'}"""
             
             if file_path:
                 img.save(file_path, "PNG", quality=95)
-                
-                # Log the generation
+                  # Log the generation
                 log_delivery('ID Card', student['roll_number'], 'User Download', 'download', 'Completed')
                 
                 messagebox.showinfo("Success", f"ID Card generated successfully!\nSaved to: {file_path}")
@@ -2340,7 +2337,8 @@ Status: {'Active' if student['enrollment_status'] == 1 else 'Inactive'}"""
             messagebox.showwarning("No Student", "Please load a student first using 'Load Student' button.")
             return
 
-        try:            # Create a higher resolution image for download
+        try:
+            # Create a higher resolution image for download
             img_width, img_height = 800, 500  # High resolution for printing
             img = Image.new('RGB', (img_width, img_height), 'lightblue')
             draw = ImageDraw.Draw(img)
@@ -2370,15 +2368,15 @@ Status: {'Active' if student['enrollment_status'] == 1 else 'Inactive'}"""
             
             # Photo area
             draw.rectangle([40, 120, 200, 280], outline='black', width=4, fill='white')
-            
-            # Try to load and paste actual profile picture
+              # Try to load and paste actual profile picture
             student = self.current_id_student
-            if student.get('profile_picture_path') and os.path.exists(student['profile_picture_path']):
+            if student['profile_picture_path'] and os.path.exists(student['profile_picture_path']):
                 try:
                     # Load and resize profile picture
                     profile_img = Image.open(student['profile_picture_path'])
                     # Resize to fit the photo area (152x152 pixels with some padding)
-                    profile_img_resized = profile_img.resize((152, 152), Image.Resampling.LANCZOS)                    # Paste the image in the photo area
+                    profile_img_resized = profile_img.resize((152, 152), Image.Resampling.LANCZOS)
+                    # Paste the image in the photo area
                     img.paste(profile_img_resized, (44, 124))  # Positioned within the border
                 except Exception as e:
                     # If image loading fails, show error message
