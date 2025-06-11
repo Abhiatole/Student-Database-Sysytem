@@ -4,3 +4,8 @@ Pillow
 reportlab
 matplotlib
 ttkbootstrap
+
+# Build dependencies
+pyinstaller>=5.0
+setuptools
+wheel

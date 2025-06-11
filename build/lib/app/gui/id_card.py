@@ -1,1 +1,0 @@
-# ID card generation logic
